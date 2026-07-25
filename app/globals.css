@@ -330,6 +330,13 @@ button {
   margin-top: 4px;
 }
 
+.popup-visit-dates {
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
 .section-heading {
   display: flex;
   align-items: end;

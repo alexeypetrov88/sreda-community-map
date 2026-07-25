@@ -35,6 +35,7 @@ free-form location field.
   and trips.
 - The map can be moved into the future one day at a time or by date picker.
 - Travellers use a different map colour from members at home.
+- Travelling members’ map popups show the inclusive dates of their visit.
 - **Who is here today?** and date-range search return matching members.
 - Overlapping trips for the same member are rejected to avoid ambiguous
   locations.

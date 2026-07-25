@@ -40,6 +40,8 @@ type Person = {
   lat: number;
   lng: number;
   mode: "home" | "travelling";
+  startsOn?: string;
+  endsOn?: string;
 };
 
 type MemberData = {
@@ -246,10 +248,15 @@ function SredaMap({ people }: { people: Person[] }) {
               .sort((a, b) =>
                 a.mode === b.mode ? a.name.localeCompare(b.name) : a.mode === "travelling" ? -1 : 1,
               )
-              .map(
-                (person) =>
-                  `<div class="popup-person"><strong>${escapeHtml(person.name)}</strong> · ${person.mode === "travelling" ? "visiting" : "home"}</div>`,
-              ),
+              .map((person) => {
+                const visitDates =
+                  person.mode === "travelling" &&
+                  person.startsOn &&
+                  person.endsOn
+                    ? `<div class="popup-visit-dates">${escapeHtml(friendlyDate(person.startsOn))} – ${escapeHtml(friendlyDate(person.endsOn))}</div>`
+                    : "";
+                return `<div class="popup-person"><div><strong>${escapeHtml(person.name)}</strong> · ${person.mode === "travelling" ? "visiting" : "home"}</div>${visitDates}</div>`;
+              }),
           ].join("");
           L.marker([sample.lat, sample.lng], { icon }).addTo(map).bindPopup(popup);
         }

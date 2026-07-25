@@ -110,6 +110,22 @@ test("mobile date fields are constrained to their grid column", async () => {
   );
 });
 
+test("travelling map popups show the active visit date range", async () => {
+  const [source, mapRoute, styles] = await Promise.all([
+    readFile(new URL("app/SredaApp.tsx", root), "utf8"),
+    readFile(new URL("app/api/map/route.ts", root), "utf8"),
+    readFile(new URL("app/globals.css", root), "utf8"),
+  ]);
+  assert.match(mapRoute, /startsOn: plans\.startsOn/);
+  assert.match(mapRoute, /endsOn: plans\.endsOn/);
+  assert.match(mapRoute, /startsOn: activePlan\.startsOn/);
+  assert.match(mapRoute, /endsOn: activePlan\.endsOn/);
+  assert.match(source, /popup-visit-dates/);
+  assert.match(source, /friendlyDate\(person\.startsOn\)/);
+  assert.match(source, /friendlyDate\(person\.endsOn\)/);
+  assert.match(styles, /\.popup-visit-dates/);
+});
+
 test("uses the approved Sreda icon throughout the app", async () => {
   const [source, styles, layout] = await Promise.all([
     readFile(new URL("app/SredaApp.tsx", root), "utf8"),
