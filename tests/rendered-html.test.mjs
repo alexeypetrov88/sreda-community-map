@@ -16,7 +16,10 @@ test("builds the private Sreda entry point", async () => {
     new URL(`dist/client/assets/${appAsset}`, root),
     "utf8",
   );
-  assert.match(serverBundle, /Sreda — find your people nearby/i);
+  assert.match(
+    serverBundle,
+    /Sreda Community Map — find your people nearby/i,
+  );
   assert.match(clientBundle, /private community map/i);
   assert.match(clientBundle, /Who is here today/i);
   assert.doesNotMatch(clientBundle, /unpkg\.com\/leaflet/i);

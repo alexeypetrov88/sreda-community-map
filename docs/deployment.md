@@ -2,9 +2,9 @@
 
 ## 1. Create credentials
 
-Create the bot through [BotFather](https://t.me/BotFather). Collect numeric
-Telegram IDs for every administrator; usernames are mutable and unsuitable for
-authorization.
+Create the Sreda Community Map bot through
+[BotFather](https://t.me/BotFather). Collect numeric Telegram IDs for every
+administrator; usernames are mutable and unsuitable for authorization.
 
 Generate three different random values:
 

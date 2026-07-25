@@ -3,10 +3,10 @@
 [![CI](https://github.com/alexeypetrov88/sreda-community-map/actions/workflows/ci.yml/badge.svg)](https://github.com/alexeypetrov88/sreda-community-map/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Sreda is an open-source Telegram bot and Mini App that helps members of a
-closed community find one another by city. Members can share a home city,
-record a current trip, schedule future trips, inspect a date-aware map, and ask
-who will be in a city on selected dates.
+Sreda Community Map is an open-source Telegram Mini App and companion bot for
+the Sreda community. It helps members find one another by city: they can share
+a home city, record a current trip, schedule future trips, inspect a date-aware
+map, and ask who will be in a city on selected dates.
 
 The interface is intentionally structured: buttons, city search, and date
 pickers. There is no LLM, natural-language parser, live GPS tracking, or

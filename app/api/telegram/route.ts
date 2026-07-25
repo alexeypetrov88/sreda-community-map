@@ -55,7 +55,7 @@ function randomId() {
 }
 
 function appButton(appUrl: string) {
-  return [[{ text: "Open Sreda map", web_app: { url: appUrl } }]];
+  return [[{ text: "Open Sreda Community Map", web_app: { url: appUrl } }]];
 }
 
 function adminMenu(appUrl: string) {

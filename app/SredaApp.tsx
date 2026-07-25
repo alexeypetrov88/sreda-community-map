@@ -532,7 +532,7 @@ export function SredaApp() {
         <>
           <section className="hero">
             <div>
-              <p className="eyebrow">Sreda community map</p>
+              <p className="eyebrow">Sreda Community Map</p>
               <h1>Find your people, wherever you are.</h1>
               <p>
                 Travellers are highlighted so a short overlap never slips past.

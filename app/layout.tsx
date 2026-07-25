@@ -23,7 +23,7 @@ export async function generateMetadata(): Promise<Metadata> {
         : "https";
   const origin = host ? `${protocol}://${host}` : "http://localhost:3000";
   const imageUrl = new URL("/og.png", origin).toString();
-  const title = "Sreda — find your people nearby";
+  const title = "Sreda Community Map — find your people nearby";
   const description =
     "A private city-level map for approved community members and their travel plans.";
 
