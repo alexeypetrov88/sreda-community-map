@@ -9,6 +9,7 @@ import {
   isValidPlaceId,
   joinDisposition,
   nextMemberStatus,
+  normalizeTelegramUsername,
   parseJoinDecisionCallback,
   parseJsonObject,
   parseMemberActionCallback,
@@ -129,6 +130,14 @@ test("join code comparison fails closed", () => {
   assert.equal(hasValidJoinCode("short", "short"), false);
   assert.equal(constantTimeEqual("same", "same"), true);
   assert.equal(constantTimeEqual("same", "diff"), false);
+});
+
+test("Telegram admin usernames are normalized and strictly bounded", () => {
+  assert.equal(normalizeTelegramUsername("@Alexey_Petrov"), "alexey_petrov");
+  assert.equal(normalizeTelegramUsername(" zhidkovakate "), "zhidkovakate");
+  assert.equal(normalizeTelegramUsername("four"), undefined);
+  assert.equal(normalizeTelegramUsername("invalid-name"), undefined);
+  assert.equal(normalizeTelegramUsername(undefined), undefined);
 });
 
 test("membership state machine prevents self-reentry and stale actions", () => {

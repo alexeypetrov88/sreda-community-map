@@ -3,11 +3,10 @@
 ## 1. Create credentials
 
 Create the Sreda Community Map bot through
-[BotFather](https://t.me/BotFather). For production, collect immutable numeric
-Telegram IDs for administrators. Staging may instead use a username to
-bootstrap its first admin: the first matching account that opens the bot is
-pinned to its numeric Telegram identity in the database, which becomes
-authoritative for later admin checks.
+[BotFather](https://t.me/BotFather). Administrators may be configured using
+numeric Telegram IDs or usernames. Each configured username can be claimed
+once by the matching account; that account's numeric Telegram identity is then
+pinned in the database and becomes authoritative for later admin checks.
 
 Generate three different random values:
 

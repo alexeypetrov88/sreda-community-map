@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { getD1, getDb } from "../../../db";
 import {
+  adminClaims,
   auditEvents,
   members,
   membershipRequests,
@@ -21,6 +22,7 @@ import {
   hasValidJoinCode,
   joinDisposition,
   nextMemberStatus,
+  normalizeTelegramUsername,
   parseJoinDecisionCallback,
   parseMemberActionCallback,
   type TelegramIdentity,
@@ -85,62 +87,40 @@ async function isAdmin(user: TelegramIdentity) {
 
   const db = getDb();
   const [pinned] = await db
-    .select({ telegramId: members.telegramId })
-    .from(members)
-    .where(
-      and(
-        eq(members.telegramId, user.id),
-        eq(members.status, "approved"),
-        eq(members.approvedBy, user.id),
-      ),
-    )
+    .select({ telegramId: adminClaims.telegramId })
+    .from(adminClaims)
+    .where(eq(adminClaims.telegramId, user.id))
     .limit(1);
   if (pinned) return true;
 
-  const username = user.username?.toLocaleLowerCase();
+  const username = normalizeTelegramUsername(user.username);
   if (!username || !adminUsernames().has(username)) return false;
 
-  // A username is used only to bootstrap the first staging admin. Once claimed,
-  // the immutable numeric identity stored in the member row is authoritative.
-  const [existingAdmin] = await db
-    .select({ telegramId: members.telegramId })
-    .from(members)
-    .where(
-      and(
-        eq(members.status, "approved"),
-        eq(members.telegramId, members.approvedBy),
-      ),
-    )
-    .limit(1);
-  return !existingAdmin;
+  // The database constraints make each configured username and each Telegram
+  // account a one-time claim. After this point, only the immutable numeric ID
+  // is used for authorization, even if the Telegram username later changes.
+  const claimed = await db
+    .insert(adminClaims)
+    .values({ username, telegramId: user.id })
+    .onConflictDoNothing()
+    .returning({ telegramId: adminClaims.telegramId });
+  return claimed.length === 1;
 }
 
 async function isAdminTelegramId(telegramId: number) {
   if (adminIds().has(telegramId)) return true;
   const [pinned] = await getDb()
-    .select({ telegramId: members.telegramId })
-    .from(members)
-    .where(
-      and(
-        eq(members.telegramId, telegramId),
-        eq(members.status, "approved"),
-        eq(members.approvedBy, telegramId),
-      ),
-    )
+    .select({ telegramId: adminClaims.telegramId })
+    .from(adminClaims)
+    .where(eq(adminClaims.telegramId, telegramId))
     .limit(1);
   return Boolean(pinned);
 }
 
 async function adminChatIds() {
   const pinned = await getDb()
-    .select({ telegramId: members.telegramId })
-    .from(members)
-    .where(
-      and(
-        eq(members.status, "approved"),
-        eq(members.telegramId, members.approvedBy),
-      ),
-    );
+    .select({ telegramId: adminClaims.telegramId })
+    .from(adminClaims);
   return new Set([
     ...adminIds(),
     ...pinned.map((member) => member.telegramId),
