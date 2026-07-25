@@ -12,6 +12,8 @@ The interface is intentionally structured: buttons, city search, and date
 pickers. There is no LLM, natural-language parser, live GPS tracking, or
 free-form location field.
 
+![Sreda Community Map social preview](public/og.png)
+
 > **Project status:** early MVP. Review the privacy model and run your own
 > security assessment before inviting a real community.
 
