@@ -96,3 +96,22 @@ test("mobile date fields are constrained to their grid column", async () => {
     /\.date-input\s*\{[\s\S]*max-inline-size:\s*100%[\s\S]*-webkit-appearance:\s*none/,
   );
 });
+
+test("uses the approved Sreda icon throughout the app", async () => {
+  const [source, styles, layout] = await Promise.all([
+    readFile(new URL("app/SredaApp.tsx", root), "utf8"),
+    readFile(new URL("app/globals.css", root), "utf8"),
+    readFile(new URL("app/layout.tsx", root), "utf8"),
+  ]);
+  const icon = new URL(
+    "public/sreda-community-map-icon-v3-dark-green.png",
+    root,
+  );
+  await access(icon);
+  assert.doesNotMatch(source, /className="brand-mark"><span>S<\/span>/);
+  assert.match(
+    styles,
+    /url\("\/sreda-community-map-icon-v3-dark-green\.png"\)/,
+  );
+  assert.match(layout, /sreda-community-map-icon-v3-dark-green\.png/);
+});

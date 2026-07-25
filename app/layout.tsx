@@ -32,8 +32,9 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     icons: {
-      icon: "/sreda-mark.svg",
-      shortcut: "/sreda-mark.svg",
+      icon: "/sreda-community-map-icon-v3-dark-green.png",
+      shortcut: "/sreda-community-map-icon-v3-dark-green.png",
+      apple: "/sreda-community-map-icon-v3-dark-green.png",
     },
     openGraph: {
       title,

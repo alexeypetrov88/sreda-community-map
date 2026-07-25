@@ -65,18 +65,15 @@ button {
 }
 
 .brand-mark {
-  display: grid;
   width: 36px;
   height: 36px;
-  place-items: center;
-  border-radius: 50% 50% 46% 54%;
-  background: var(--green);
-  color: #fff;
-  transform: rotate(-8deg);
-}
-
-.brand-mark span {
-  transform: rotate(8deg);
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background:
+    var(--ink)
+    url("/sreda-community-map-icon-v3-dark-green.png")
+    center / cover no-repeat;
+  box-shadow: 0 2px 8px rgba(24, 53, 47, 0.15);
 }
 
 .eyebrow {

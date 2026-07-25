@@ -492,7 +492,7 @@ export function SredaApp() {
     return (
       <main className="outside">
         <div className="outside-card card">
-          <div className="brand-mark"><span>S</span></div>
+          <div className="brand-mark" aria-hidden="true" />
           <h1>Sreda</h1>
           <p>Opening the private community map…</p>
         </div>
@@ -504,7 +504,7 @@ export function SredaApp() {
     return (
       <main className="outside">
         <div className="outside-card card">
-          <div className="brand-mark"><span>S</span></div>
+          <div className="brand-mark" aria-hidden="true" />
           <h1>Sreda</h1>
           <p>
             This map is private. Open the invitation link shared inside Sreda,
@@ -519,7 +519,7 @@ export function SredaApp() {
     return (
       <main className="outside">
         <div className="outside-card card">
-          <div className="brand-mark"><span>S</span></div>
+          <div className="brand-mark" aria-hidden="true" />
           <h1>Not open yet</h1>
           <p>{fatalError}</p>
         </div>
@@ -531,7 +531,7 @@ export function SredaApp() {
     <main className="sreda-shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark"><span>S</span></div>
+          <div className="brand-mark" aria-hidden="true" />
           Sreda
         </div>
         <div className="top-date">{friendlyDate(today())}</div>
