@@ -13,6 +13,15 @@ export function adminIds() {
   );
 }
 
+export function adminUsernames() {
+  return new Set(
+    (runtimeConfig().SREDA_ADMIN_USERNAMES ?? "")
+      .split(",")
+      .map((value) => value.trim().replace(/^@/, "").toLocaleLowerCase())
+      .filter((value) => /^[a-z0-9_]{5,32}$/.test(value)),
+  );
+}
+
 export async function telegramApi(
   method: string,
   payload: Record<string, unknown>,

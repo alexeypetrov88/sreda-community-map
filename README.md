@@ -23,8 +23,9 @@ free-form location field.
 - A new member follows the private Sreda invitation link and becomes `pending`.
 - Finding the bot or pressing **Start** without that invitation cannot create a
   membership request.
-- One of the numeric Telegram IDs in `SREDA_ADMIN_IDS` receives **Approve** and
-  **Reject** buttons.
+- A configured admin receives **Approve** and **Reject** buttons. Production
+  deployments should use immutable numeric IDs; staging can bootstrap its first
+  admin from a username and then pin that account's numeric Telegram identity.
 - Approved members open the Mini App from the bot.
 - A member can set or change a country-and-city-level home location.
 - **I’m travelling now** creates a trip beginning today.
@@ -110,7 +111,8 @@ verification. The webhook separately checks
 - A Telegram bot created with [BotFather](https://t.me/BotFather)
 - Cloudflare-compatible Worker hosting with a D1 binding named `DB`, or
   ChatGPT Sites with D1 enabled
-- Numeric Telegram user IDs for at least one administrator
+- At least one numeric Telegram admin ID, or a staging admin username for the
+  one-time identity bootstrap
 
 ## Environment
 
@@ -123,7 +125,8 @@ cp .env.example .env.local
 | Variable | Required | Purpose |
 |---|---:|---|
 | `BOT_TOKEN` | Yes | BotFather token; also verifies Mini App sessions |
-| `SREDA_ADMIN_IDS` | Yes | Comma-separated Telegram numeric IDs |
+| `SREDA_ADMIN_IDS` | Conditional | Comma-separated immutable Telegram numeric IDs (preferred for production) |
+| `SREDA_ADMIN_USERNAMES` | Conditional | Usernames used only to bootstrap the first admin, then pinned to that account's numeric ID |
 | `SREDA_APP_URL` | Yes | Canonical HTTPS Mini App URL used in bot buttons |
 | `SREDA_JOIN_CODE` | Yes | Private random value carried by Sreda’s Telegram invitation link |
 | `TELEGRAM_WEBHOOK_SECRET` | Yes | Authenticates webhook requests |

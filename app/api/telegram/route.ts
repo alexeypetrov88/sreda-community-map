@@ -27,6 +27,7 @@ import {
 } from "../../../lib/security";
 import {
   adminIds,
+  adminUsernames,
   answerCallbackQuery,
   sendMessage,
 } from "../../../lib/telegram";
@@ -77,6 +78,73 @@ function displayLabel(user: TelegramIdentity) {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+async function isAdmin(user: TelegramIdentity) {
+  if (adminIds().has(user.id)) return true;
+
+  const db = getDb();
+  const [pinned] = await db
+    .select({ telegramId: members.telegramId })
+    .from(members)
+    .where(
+      and(
+        eq(members.telegramId, user.id),
+        eq(members.status, "approved"),
+        eq(members.approvedBy, user.id),
+      ),
+    )
+    .limit(1);
+  if (pinned) return true;
+
+  const username = user.username?.toLocaleLowerCase();
+  if (!username || !adminUsernames().has(username)) return false;
+
+  // A username is used only to bootstrap the first staging admin. Once claimed,
+  // the immutable numeric identity stored in the member row is authoritative.
+  const [existingAdmin] = await db
+    .select({ telegramId: members.telegramId })
+    .from(members)
+    .where(
+      and(
+        eq(members.status, "approved"),
+        eq(members.telegramId, members.approvedBy),
+      ),
+    )
+    .limit(1);
+  return !existingAdmin;
+}
+
+async function isAdminTelegramId(telegramId: number) {
+  if (adminIds().has(telegramId)) return true;
+  const [pinned] = await getDb()
+    .select({ telegramId: members.telegramId })
+    .from(members)
+    .where(
+      and(
+        eq(members.telegramId, telegramId),
+        eq(members.status, "approved"),
+        eq(members.approvedBy, telegramId),
+      ),
+    )
+    .limit(1);
+  return Boolean(pinned);
+}
+
+async function adminChatIds() {
+  const pinned = await getDb()
+    .select({ telegramId: members.telegramId })
+    .from(members)
+    .where(
+      and(
+        eq(members.status, "approved"),
+        eq(members.telegramId, members.approvedBy),
+      ),
+    );
+  return new Set([
+    ...adminIds(),
+    ...pinned.map((member) => member.telegramId),
+  ]);
 }
 
 async function settleMessages(messages: Array<Promise<unknown>>) {
@@ -157,7 +225,7 @@ async function notifyAdmins(
   requestId: string,
   appUrl: string,
 ) {
-  const admins = [...adminIds()];
+  const admins = [...(await adminChatIds())];
   if (!admins.length) return false;
   const text = `<b>New Sreda request</b>\n${displayLabel(user)}`;
   return settleMessages(
@@ -187,7 +255,7 @@ async function handleStart(
     return;
   }
 
-  if (adminIds().has(user.id)) {
+  if (await isAdmin(user)) {
     await sendAdminHome(user, appUrl);
     return;
   }
@@ -298,7 +366,7 @@ async function handleJoinDecision(
   data: string,
   appUrl: string,
 ) {
-  if (!adminIds().has(admin.id)) {
+  if (!(await isAdmin(admin))) {
     await answerCallbackQuery(callbackId, "Admins only");
     return;
   }
@@ -446,7 +514,10 @@ async function sendMemberPage(
     .orderBy(asc(members.firstName), asc(members.telegramId))
     .limit(10)
     .offset(offset);
-  const visibleRows = rows.filter((member) => !adminIds().has(member.telegramId));
+  const visibleRows: typeof rows = [];
+  for (const member of rows) {
+    if (!(await isAdminTelegramId(member.telegramId))) visibleRows.push(member);
+  }
 
   if (!visibleRows.length) {
     await sendMessage(
@@ -493,12 +564,12 @@ async function handleMemberAction(
   admin: TelegramIdentity,
   data: string,
 ) {
-  if (!adminIds().has(admin.id)) {
+  if (!(await isAdmin(admin))) {
     await answerCallbackQuery(callbackId, "Admins only");
     return;
   }
   const parsed = parseMemberActionCallback(data);
-  if (!parsed || adminIds().has(parsed.telegramId)) {
+  if (!parsed || (await isAdminTelegramId(parsed.telegramId))) {
     await answerCallbackQuery(callbackId, "Invalid member action");
     return;
   }
@@ -586,7 +657,7 @@ async function handleAdminCallback(
   data: string,
   appUrl: string,
 ) {
-  if (!adminIds().has(admin.id)) {
+  if (!(await isAdmin(admin))) {
     await answerCallbackQuery(callbackId, "Admins only");
     return;
   }
@@ -658,7 +729,7 @@ export async function POST(request: Request) {
         await handleStart(message.from, start[1] ?? "", appUrl);
       } else if (
         /^\/admin(?:@\w+)?$/.test(message.text.trim()) &&
-        adminIds().has(message.from.id)
+        (await isAdmin(message.from))
       ) {
         await sendAdminHome(message.from, appUrl);
       }
