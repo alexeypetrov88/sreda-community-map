@@ -58,12 +58,17 @@ test("every community-data route uses the central membership guard", async () =>
 });
 
 test("build contains privacy headers and no client-coordinate write helper", async () => {
-  const [worker, server] = await Promise.all([
+  const [worker, server, layout] = await Promise.all([
     readFile(new URL("worker/index.ts", root), "utf8"),
     readFile(new URL("lib/server.ts", root), "utf8"),
+    readFile(new URL("app/layout.tsx", root), "utf8"),
   ]);
   assert.match(worker, /content-security-policy/i);
+  assert.match(worker, /script-src 'self' 'unsafe-inline' https:\/\/telegram\.org/i);
+  assert.match(worker, /script-src-attr 'none'/i);
   assert.match(worker, /private, no-store/i);
   assert.match(worker, /permissions-policy/i);
+  assert.match(layout, /https:\/\/telegram\.org\/js\/telegram-web-app\.js/i);
+  assert.match(layout, /strategy="beforeInteractive"/i);
   assert.doesNotMatch(server, /cleanPlace/);
 });
