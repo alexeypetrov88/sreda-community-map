@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  primaryKey,
   real,
   sqliteTable,
   text,
@@ -135,6 +136,25 @@ export const membershipRequests = sqliteTable(
       "membership_requests_status_check",
       sql`${table.status} IN ('pending','approved','rejected','expired')`,
     ),
+  ],
+);
+
+export const adminDecisionMessages = sqliteTable(
+  "admin_decision_messages",
+  {
+    requestId: text("request_id")
+      .notNull()
+      .references(() => membershipRequests.id, { onDelete: "cascade" }),
+    chatId: integer("chat_id").notNull(),
+    messageId: integer("message_id").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.requestId, table.chatId, table.messageId],
+      name: "admin_decision_messages_pk",
+    }),
+    index("admin_decision_messages_request_idx").on(table.requestId),
   ],
 );
 

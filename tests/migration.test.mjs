@@ -56,6 +56,7 @@ test("1.0 migration preserves legacy city data and enforces invariants", async (
     WHERE telegram_id = 1001
   `);
   await applyMigration(database, "0002_furry_rockslide.sql");
+  await applyMigration(database, "0003_freezing_mac_gargan.sql");
 
   const member = database
     .prepare(
@@ -124,5 +125,36 @@ test("1.0 migration preserves legacy city data and enforces invariants", async (
         VALUES ('another_admin', 1001)
       `),
     /unique/i,
+  );
+  database.exec(`
+    INSERT INTO membership_requests (
+      id, telegram_id, expires_at
+    ) VALUES (
+      'decision-message-test', 1001, '2030-01-01T00:00:00.000Z'
+    );
+    INSERT INTO admin_decision_messages (
+      request_id, chat_id, message_id
+    ) VALUES (
+      'decision-message-test', 1001, 77
+    );
+  `);
+  assert.equal(
+    database
+      .prepare(
+        "SELECT count(*) AS count FROM admin_decision_messages",
+      )
+      .get().count,
+    1,
+  );
+  database.exec(
+    "DELETE FROM membership_requests WHERE id = 'decision-message-test'",
+  );
+  assert.equal(
+    database
+      .prepare(
+        "SELECT count(*) AS count FROM admin_decision_messages",
+      )
+      .get().count,
+    0,
   );
 });

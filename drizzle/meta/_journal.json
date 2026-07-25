@@ -22,6 +22,13 @@
       "when": 1785014232816,
       "tag": "0002_furry_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785015624013,
+      "tag": "0003_freezing_mac_gargan",
+      "breakpoints": true
     }
   ]
 }

@@ -2,6 +2,7 @@ import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { getD1, getDb } from "../../../db";
 import {
   adminClaims,
+  adminDecisionMessages,
   auditEvents,
   members,
   membershipRequests,
@@ -31,7 +32,9 @@ import {
   adminIds,
   adminUsernames,
   answerCallbackQuery,
+  removeInlineKeyboard,
   sendMessage,
+  type TelegramMessageReference,
 } from "../../../lib/telegram";
 
 type TelegramUpdate = {
@@ -45,7 +48,16 @@ type TelegramUpdate = {
     id: string;
     from: TelegramIdentity;
     data?: string;
+    message?: {
+      message_id: number;
+      chat: { id: number; type: string };
+    };
   };
+};
+
+type DecisionMessageReference = {
+  chatId: number;
+  messageId: number;
 };
 
 const JOIN_REQUEST_DAYS = 7;
@@ -137,6 +149,79 @@ async function settleMessages(messages: Array<Promise<unknown>>) {
   return results.some((result) => result.status === "fulfilled");
 }
 
+async function rememberDecisionMessage(
+  requestId: string,
+  message: TelegramMessageReference | DecisionMessageReference,
+) {
+  const chatId = "chat" in message ? message.chat.id : message.chatId;
+  const messageId =
+    "message_id" in message ? message.message_id : message.messageId;
+  if (!Number.isSafeInteger(chatId) || !Number.isSafeInteger(messageId)) {
+    throw new Error("Telegram returned an invalid message reference");
+  }
+  // Store only while the request is pending. If another webhook finalized it
+  // while Telegram was delivering this prompt, remove this keyboard directly.
+  const inserted = await getD1()
+    .prepare(
+      `INSERT OR IGNORE INTO admin_decision_messages (
+         request_id, chat_id, message_id
+       )
+       SELECT ?1, ?2, ?3
+       WHERE EXISTS (
+         SELECT 1 FROM membership_requests
+         WHERE id = ?1 AND status = 'pending'
+       )`,
+    )
+    .bind(requestId, chatId, messageId)
+    .run();
+  if (inserted.meta.changes === 1) return;
+
+  const [requestRecord] = await getDb()
+    .select({ status: membershipRequests.status })
+    .from(membershipRequests)
+    .where(eq(membershipRequests.id, requestId))
+    .limit(1);
+  if (!requestRecord || requestRecord.status !== "pending") {
+    await removeInlineKeyboard(chatId, messageId);
+  }
+}
+
+async function clearDecisionMessages(
+  requestId: string,
+  currentMessage?: DecisionMessageReference,
+) {
+  if (currentMessage) {
+    await rememberDecisionMessage(requestId, currentMessage);
+  }
+  const db = getDb();
+  const messages = await db
+    .select()
+    .from(adminDecisionMessages)
+    .where(eq(adminDecisionMessages.requestId, requestId));
+  const results = await Promise.allSettled(
+    messages.map(async (message) => {
+      await removeInlineKeyboard(message.chatId, message.messageId);
+      await db
+        .delete(adminDecisionMessages)
+        .where(
+          and(
+            eq(adminDecisionMessages.requestId, message.requestId),
+            eq(adminDecisionMessages.chatId, message.chatId),
+            eq(adminDecisionMessages.messageId, message.messageId),
+          ),
+        );
+    }),
+  );
+  for (const result of results) {
+    if (result.status === "rejected") {
+      console.error(
+        "Telegram decision buttons could not be removed",
+        result.reason,
+      );
+    }
+  }
+}
+
 async function recordAudit(
   type: string,
   actorTelegramId: number | null,
@@ -216,7 +301,7 @@ async function notifyAdmins(
           { text: "Reject", callback_data: `j:r:${requestId}` },
         ],
         ...appButton(appUrl),
-      ]),
+      ]).then((message) => rememberDecisionMessage(requestId, message)),
     ),
   );
 }
@@ -345,6 +430,7 @@ async function handleJoinDecision(
   admin: TelegramIdentity,
   data: string,
   appUrl: string,
+  currentMessage?: DecisionMessageReference,
 ) {
   if (!(await isAdmin(admin))) {
     await answerCallbackQuery(callbackId, "Admins only");
@@ -374,7 +460,10 @@ async function handleJoinDecision(
         .set({ status: "expired", decidedAt: now })
         .where(eq(membershipRequests.id, parsed.requestId));
     }
-    await answerCallbackQuery(callbackId, "This request is no longer active");
+    await Promise.allSettled([
+      clearDecisionMessages(parsed.requestId, currentMessage),
+      answerCallbackQuery(callbackId, "This request is no longer active"),
+    ]);
     return;
   }
 
@@ -404,7 +493,10 @@ async function handleJoinDecision(
     batchResults[0].meta.changes !== 1 ||
     batchResults[1].meta.changes !== 1
   ) {
-    await answerCallbackQuery(callbackId, "This request was already handled");
+    await Promise.allSettled([
+      clearDecisionMessages(parsed.requestId, currentMessage),
+      answerCallbackQuery(callbackId, "This request was already handled"),
+    ]);
     return;
   }
 
@@ -414,6 +506,7 @@ async function handleJoinDecision(
     requestRecord.telegramId,
   );
   await settleMessages([
+    clearDecisionMessages(parsed.requestId, currentMessage),
     answerCallbackQuery(
       callbackId,
       parsed.action === "approve" ? "Approved" : "Rejected",
@@ -471,7 +564,9 @@ async function sendPendingRequests(adminId: number) {
           { text: "Approve", callback_data: `j:a:${requestRecord.id}` },
           { text: "Reject", callback_data: `j:r:${requestRecord.id}` },
         ],
-      ]),
+      ]).then((message) =>
+        rememberDecisionMessage(requestRecord.id, message),
+      ),
     );
   }
   await settleMessages(messages);
@@ -720,6 +815,12 @@ export async function POST(request: Request) {
           callback.from,
           callback.data,
           appUrl,
+          callback.message
+            ? {
+                chatId: callback.message.chat.id,
+                messageId: callback.message.message_id,
+              }
+            : undefined,
         );
       } else if (callback.data.startsWith("m:")) {
         await handleMemberAction(callback.id, callback.from, callback.data);
