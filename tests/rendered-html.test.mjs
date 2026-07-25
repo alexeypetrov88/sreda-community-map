@@ -80,3 +80,14 @@ test("city search cannot submit its parent location form", async () => {
   assert.match(source, /onClick=\{\(\) => void search\(\)\}/);
   assert.match(source, /event\.key !== "Enter"/);
 });
+
+test("mobile date fields are constrained to their grid column", async () => {
+  const styles = await readFile(new URL("app/globals.css", root), "utf8");
+  assert.match(styles, /\.two-columns input\[type="date"\]/);
+  assert.match(styles, /max-inline-size:\s*100%/);
+  assert.match(styles, /-webkit-appearance:\s*none/);
+  assert.match(
+    styles,
+    /@media \(max-width: 560px\)[\s\S]*\.quick-actions,\s*\.two-columns\s*\{[\s\S]*grid-template-columns:\s*1fr/,
+  );
+});
