@@ -94,6 +94,22 @@ export const members = sqliteTable(
   ],
 );
 
+export const adminClaims = sqliteTable(
+  "admin_claims",
+  {
+    username: text("username").primaryKey(),
+    telegramId: integer("telegram_id").notNull(),
+    claimedAt: text("claimed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    uniqueIndex("admin_claims_telegram_id_idx").on(table.telegramId),
+    check(
+      "admin_claims_username_check",
+      sql`length(${table.username}) BETWEEN 5 AND 32`,
+    ),
+  ],
+);
+
 export const membershipRequests = sqliteTable(
   "membership_requests",
   {
