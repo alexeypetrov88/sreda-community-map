@@ -72,3 +72,11 @@ test("build contains privacy headers and no client-coordinate write helper", asy
   assert.match(layout, /strategy="beforeInteractive"/i);
   assert.doesNotMatch(server, /cleanPlace/);
 });
+
+test("city search cannot submit its parent location form", async () => {
+  const source = await readFile(new URL("app/SredaApp.tsx", root), "utf8");
+  assert.doesNotMatch(source, /<form className="city-search-row"/);
+  assert.match(source, /className="city-search-row"/);
+  assert.match(source, /onClick=\{\(\) => void search\(\)\}/);
+  assert.match(source, /event\.key !== "Enter"/);
+});

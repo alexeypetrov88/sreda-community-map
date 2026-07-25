@@ -124,8 +124,7 @@ function CityPicker({
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
 
-  async function search(event: FormEvent) {
-    event.preventDefault();
+  async function search() {
     if (query.trim().length < 2) return;
     setSearching(true);
     setError("");
@@ -144,18 +143,28 @@ function CityPicker({
 
   return (
     <div>
-      <form className="city-search-row" onSubmit={search}>
+      <div className="city-search-row">
         <input
           className="field"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            void search();
+          }}
           placeholder="City, country"
           aria-label="City and country"
         />
-        <button className="button secondary" type="submit" disabled={searching}>
+        <button
+          className="button secondary"
+          type="button"
+          disabled={searching}
+          onClick={() => void search()}
+        >
           {searching ? "Searching…" : "Find"}
         </button>
-      </form>
+      </div>
       {error && <div className="error">{error}</div>}
       {results.length > 0 && (
         <div className="city-results">
