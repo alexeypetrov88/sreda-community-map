@@ -32,7 +32,10 @@ function withSecurityHeaders(response: Response, requestUrl: URL) {
     "content-security-policy",
     [
       "default-src 'self'",
-      "script-src 'self'",
+      // Vinext emits small inline bootstrap and RSC payload scripts. Event
+      // handler attributes remain disabled separately.
+      "script-src 'self' 'unsafe-inline' https://telegram.org",
+      "script-src-attr 'none'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https://*.tile.openstreetmap.org",
       "connect-src 'self'",

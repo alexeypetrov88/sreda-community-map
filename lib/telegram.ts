@@ -1,4 +1,5 @@
 import { runtimeConfig } from "./server";
+import { normalizeTelegramUsername } from "./security";
 
 type TelegramButton =
   | { text: string; callback_data: string }
@@ -10,6 +11,15 @@ export function adminIds() {
       .split(",")
       .map((value) => Number(value.trim()))
       .filter(Number.isSafeInteger),
+  );
+}
+
+export function adminUsernames() {
+  return new Set(
+    (runtimeConfig().SREDA_ADMIN_USERNAMES ?? "")
+      .split(",")
+      .map(normalizeTelegramUsername)
+      .filter((value): value is string => Boolean(value)),
   );
 }
 

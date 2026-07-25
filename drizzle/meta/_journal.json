@@ -15,6 +15,13 @@
       "when": 1784983210051,
       "tag": "0001_boring_betty_brant",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1785014232816,
+      "tag": "0002_furry_rockslide",
+      "breakpoints": true
     }
   ]
 }
