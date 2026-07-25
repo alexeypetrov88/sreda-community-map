@@ -49,17 +49,19 @@ export async function GET(request: Request) {
     .select({
       telegramId: plans.telegramId,
       place: places,
+      startsOn: plans.startsOn,
+      endsOn: plans.endsOn,
     })
     .from(plans)
     .innerJoin(places, eq(plans.placeId, places.id))
     .where(and(lte(plans.startsOn, date), gte(plans.endsOn, date)));
   const activeByMember = new Map(
-    activePlans.map((plan) => [plan.telegramId, plan.place]),
+    activePlans.map((plan) => [plan.telegramId, plan]),
   );
 
   const people = approved.flatMap((member) => {
-    const activePlace = activeByMember.get(member.telegramId);
-    const place = activePlace ?? member.home;
+    const activePlan = activeByMember.get(member.telegramId);
+    const place = activePlan?.place ?? member.home;
     if (!place) return [];
     return [
       {
@@ -69,7 +71,13 @@ export async function GET(request: Request) {
         countryCode: place.countryCode,
         lat: place.lat,
         lng: place.lng,
-        mode: activePlace ? ("travelling" as const) : ("home" as const),
+        mode: activePlan ? ("travelling" as const) : ("home" as const),
+        ...(activePlan
+          ? {
+              startsOn: activePlan.startsOn,
+              endsOn: activePlan.endsOn,
+            }
+          : {}),
       },
     ];
   });
