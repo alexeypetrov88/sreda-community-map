@@ -1,45 +1,123 @@
-# Sreda community map
+# Sreda Community Map
 
-A closed Telegram bot and Mini App for sharing city-level home locations and
-travel plans inside the Sreda community.
+[![CI](https://github.com/alexeypetrov88/sreda-community-map/actions/workflows/ci.yml/badge.svg)](https://github.com/alexeypetrov88/sreda-community-map/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## What it does
+Sreda is an open-source Telegram bot and Mini App that helps members of a
+closed community find one another by city. Members can share a home city,
+record a current trip, schedule future trips, inspect a date-aware map, and ask
+who will be in a city on selected dates.
 
-- new members request access by starting the bot;
-- only Telegram numeric IDs in `SREDA_ADMIN_IDS` can approve or reject them;
-- approved members set a home city, add current/future trips, and cancel plans;
-- the private map distinguishes travellers from people at home at any date;
-- city/date search answers “who is here today?” or searches a date range;
-- every data endpoint validates Telegram Mini App `initData` and checks approved
-  membership server-side.
+The interface is intentionally structured: buttons, city search, and date
+pickers. There is no LLM, natural-language parser, live GPS tracking, or
+free-form location field.
 
-No exact location, free-form travel notes, natural-language processing, or LLM
-is used. City lookup runs only after the member presses **Find**.
+> **Project status:** early MVP. Review the privacy model and run your own
+> security assessment before inviting a real community.
 
-## Configure
+## Product behaviour
 
-Create the bot in BotFather and configure these runtime values from
-`.env.example`:
+- A new Telegram user presses **Start** and becomes `pending`.
+- One of the numeric Telegram IDs in `SREDA_ADMIN_IDS` receives **Approve** and
+  **Reject** buttons.
+- Approved members open the Mini App from the bot.
+- A member can set or change a country-and-city-level home location.
+- **I’m travelling now** creates a trip beginning today.
+- **Plan a future trip** records a city and inclusive start/end dates.
+- Members can list their plans and cancel one with a two-step button.
+- The map can be moved into the future one day at a time or by date picker.
+- Travellers use a different map colour from members at home.
+- **Who is here today?** and date-range search return matching members.
+- Overlapping trips for the same member are rejected to avoid ambiguous
+  locations.
 
-- `BOT_TOKEN`
-- `SREDA_ADMIN_IDS` — comma-separated Telegram numeric user IDs
-- `TELEGRAM_WEBHOOK_SECRET` — a long random value
-- `GEOCODER_CONTACT` — an admin email for the geocoder user agent
+All approved members currently have the same visibility: they can see the
+display name and city-level presence of every other approved member.
 
-After deployment, register the webhook:
+## Architecture
 
-```bash
-curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://YOUR_DEPLOYED_HOST/api/telegram",
-    "secret_token": "YOUR_TELEGRAM_WEBHOOK_SECRET",
-    "allowed_updates": ["message", "callback_query"]
-  }'
+```mermaid
+flowchart LR
+    T["Telegram user"] --> B["Telegram Bot API"]
+    B --> W["Sreda Worker / webhook"]
+    T --> M["Telegram Mini App"]
+    M --> A["Authenticated Sreda APIs"]
+    A --> D[("Cloudflare D1")]
+    A --> G["City geocoder"]
+    M --> O["OpenStreetMap tiles"]
+    W --> D
+    W --> B
 ```
 
-Then set the bot’s menu button or Main Mini App URL in BotFather to the deployed
-HTTPS root URL.
+The bot and Mini App share one Cloudflare-compatible Worker:
+
+- **Telegram webhook** handles membership requests and admin decisions.
+- **Mini App frontend** provides map, plans, and presence search.
+- **API routes** verify Telegram `initData` and approved membership on every
+  request.
+- **D1/SQLite** stores members, home locations, trips, and city-search cache.
+- **Nominatim-compatible geocoder** resolves an explicitly submitted city
+  search; it is not used for autocomplete.
+
+See [Architecture](docs/architecture.md) and
+[Privacy and threat model](docs/privacy-and-threat-model.md) for detail.
+
+## Data stored
+
+| Data | Stored |
+|---|---|
+| Telegram numeric ID | Yes |
+| Telegram name and optional username | Yes |
+| Membership and approval status | Yes |
+| Home city, country and city-centre coordinates | Optional |
+| Trip city, country, city-centre coordinates and dates | Optional |
+| Exact address or live GPS | No |
+| Phone number or Telegram chat history | No |
+| Free-form travel notes | No |
+
+Coordinates represent a city centroid, not a person’s physical position.
+
+## Security boundary
+
+The deployed root page may be publicly reachable because Telegram needs an
+HTTPS Mini App URL. Community data is not public:
+
+1. the browser sends Telegram’s signed `initData`;
+2. the server verifies its HMAC with `BOT_TOKEN`;
+3. the session must be fresh;
+4. the Telegram ID must have `approved` status;
+5. mutations are scoped to the authenticated member.
+
+The Telegram ID in browser state is never trusted without signature
+verification. The webhook separately checks
+`X-Telegram-Bot-Api-Secret-Token`.
+
+## Requirements
+
+- Node.js 22.13 or newer
+- A Telegram bot created with [BotFather](https://t.me/BotFather)
+- Cloudflare-compatible Worker hosting with a D1 binding named `DB`, or
+  ChatGPT Sites with D1 enabled
+- Numeric Telegram user IDs for at least one administrator
+
+## Environment
+
+Copy `.env.example` to `.env.local` for local work:
+
+```bash
+cp .env.example .env.local
+```
+
+| Variable | Required | Purpose |
+|---|---:|---|
+| `BOT_TOKEN` | Yes | BotFather token; also verifies Mini App sessions |
+| `SREDA_ADMIN_IDS` | Yes | Comma-separated Telegram numeric IDs |
+| `TELEGRAM_WEBHOOK_SECRET` | Yes | Authenticates webhook requests |
+| `GEOCODER_CONTACT` | For public Nominatim | Identifies the application operator |
+| `GEOCODER_URL` | No | Replaces the default Nominatim-compatible endpoint |
+
+Never commit real values. `BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` must be
+stored as hosting secrets.
 
 ## Local development
 
@@ -47,17 +125,65 @@ HTTPS root URL.
 npm install
 npm run db:generate
 npm run dev
+```
+
+The normal browser view shows a locked splash screen. Full API testing requires
+valid Telegram Mini App `initData` or purpose-built test fixtures; production
+must never include an authentication bypass.
+
+Validation:
+
+```bash
+npm run lint
+npx tsc --noEmit
 npm test
 ```
 
-The public Nominatim service is used only for explicit, cached city searches.
-This small-community setup must stay below its one-request-per-second aggregate
-limit. Set `GEOCODER_URL` to a hosted provider or self-hosted Nominatim before
-the community grows.
+## Deployment
 
-## Privacy notes before launch
+Read [Deployment and Telegram setup](docs/deployment.md).
 
-Tell members that all approved members can see their city-level home and trip
-locations. Establish a retention/deletion policy and name the community admin
-responsible for data requests. Rotate the bot token and webhook secret if either
-is exposed.
+At a high level:
+
+1. create the D1 database and apply `drizzle/` migrations;
+2. configure runtime secrets and admin IDs;
+3. deploy to an HTTPS URL;
+4. register `/api/telegram` as the Telegram webhook;
+5. configure the root URL as the bot’s Main Mini App;
+6. test pending, approval, home, trip, cancellation, map and search flows with
+   separate admin and member accounts.
+
+The checked-in `.openai/hosting.json` contains the original project’s opaque
+Sites ID. Fork maintainers should remove `project_id` before creating their own
+Site.
+
+## Geocoding and map policy
+
+The default public Nominatim endpoint is suitable only for a small community.
+Searches occur only after **Find** is pressed and results are cached. Operators
+must obey its aggregate request limits, provide identifying contact
+information, and switch to a hosted provider or self-hosted instance as usage
+grows.
+
+OpenStreetMap attribution remains visible on the map.
+
+## Roadmap
+
+- Member-controlled visibility settings
+- Account/data deletion
+- Admin member-management screen and audit history
+- Data export and retention automation
+- Automated Telegram signature and authorization tests
+- Optional private Google Sheets export for administrators
+- Localization
+- Accessible non-map list view
+
+## Contributing
+
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md)
+and [SECURITY.md](SECURITY.md) first. Please do not put real community data,
+Telegram tokens, or personal identifiers in issues or test fixtures.
+
+## Licence
+
+[MIT](LICENSE)

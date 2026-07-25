@@ -2,6 +2,15 @@
   "name": "sreda-community-map",
   "version": "0.1.0",
   "private": true,
+  "description": "A private, city-level Telegram community map for home locations and travel plans.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alexeypetrov88/sreda-community-map.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alexeypetrov88/sreda-community-map/issues"
+  },
   "engines": {
     "node": ">=22.13.0"
   },
