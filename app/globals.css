@@ -159,9 +159,15 @@ button {
 
 .date-stepper {
   display: grid;
+  min-width: 0;
   grid-template-columns: 42px minmax(0, 1fr) 42px;
   flex: 1;
   gap: 7px;
+}
+
+.date-stepper > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .date-input,
@@ -176,7 +182,13 @@ button {
 
 .date-input {
   width: 100%;
+  max-width: 100%;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   padding: 10px 8px;
+  -webkit-appearance: none;
+  appearance: none;
   text-align: center;
   font-size: 14px;
   font-weight: 650;

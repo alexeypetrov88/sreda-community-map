@@ -90,4 +90,9 @@ test("mobile date fields are constrained to their grid column", async () => {
     styles,
     /@media \(max-width: 560px\)[\s\S]*\.quick-actions,\s*\.two-columns\s*\{[\s\S]*grid-template-columns:\s*1fr/,
   );
+  assert.match(styles, /\.date-stepper > \*/);
+  assert.match(
+    styles,
+    /\.date-input\s*\{[\s\S]*max-inline-size:\s*100%[\s\S]*-webkit-appearance:\s*none/,
+  );
 });
