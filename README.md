@@ -40,6 +40,8 @@ free-form location field.
   locations.
 - Admins can list pending, active, and inactive members in Telegram and revoke
   or restore access using buttons.
+- Once an admin approves or rejects a request, its decision buttons are removed
+  from every recorded admin notification and pending-list message.
 
 All approved members currently have the same visibility: they can see the
 display name and city-level presence of every other approved member.

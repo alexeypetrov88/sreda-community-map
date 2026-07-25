@@ -5,6 +5,11 @@ type TelegramButton =
   | { text: string; callback_data: string }
   | { text: string; web_app: { url: string } };
 
+export type TelegramMessageReference = {
+  message_id: number;
+  chat: { id: number };
+};
+
 export function adminIds() {
   return new Set(
     (runtimeConfig().SREDA_ADMIN_IDS ?? "")
@@ -23,7 +28,7 @@ export function adminUsernames() {
   );
 }
 
-export async function telegramApi(
+export async function telegramApi<Result = unknown>(
   method: string,
   payload: Record<string, unknown>,
 ) {
@@ -43,7 +48,7 @@ export async function telegramApi(
   } catch {
     throw new Error(`Telegram ${method} is temporarily unavailable`);
   }
-  let result: { ok: boolean; description?: string };
+  let result: { ok: boolean; result?: Result; description?: string };
   try {
     result = (await response.json()) as typeof result;
   } catch {
@@ -52,7 +57,7 @@ export async function telegramApi(
   if (!result.ok) {
     throw new Error(result.description ?? `Telegram ${method} failed`);
   }
-  return result;
+  return result.result as Result;
 }
 
 export function sendMessage(
@@ -60,11 +65,19 @@ export function sendMessage(
   text: string,
   keyboard?: TelegramButton[][],
 ) {
-  return telegramApi("sendMessage", {
+  return telegramApi<TelegramMessageReference>("sendMessage", {
     chat_id: chatId,
     text,
     parse_mode: "HTML",
     ...(keyboard ? { reply_markup: { inline_keyboard: keyboard } } : {}),
+  });
+}
+
+export function removeInlineKeyboard(chatId: number, messageId: number) {
+  return telegramApi("editMessageReplyMarkup", {
+    chat_id: chatId,
+    message_id: messageId,
+    reply_markup: { inline_keyboard: [] },
   });
 }
 

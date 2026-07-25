@@ -37,9 +37,22 @@ test("removes the disposable starter and declares durable storage", async () => 
   assert.match(schema, /members/);
   assert.match(schema, /plans/);
   assert.match(schema, /membershipRequests/);
+  assert.match(schema, /adminDecisionMessages/);
   assert.match(schema, /auditEvents/);
   assert.match(packageJson, /"version": "1\.0\.0"/);
   await assert.rejects(access(new URL("app/_sites-preview/SkeletonPreview.tsx", root)));
+});
+
+test("final membership decisions clear every recorded admin keyboard", async () => {
+  const [route, telegram] = await Promise.all([
+    readFile(new URL("app/api/telegram/route.ts", root), "utf8"),
+    readFile(new URL("lib/telegram.ts", root), "utf8"),
+  ]);
+  assert.match(route, /clearDecisionMessages/);
+  assert.match(route, /adminDecisionMessages/);
+  assert.match(route, /rememberDecisionMessage\(requestRecord\.id, message\)/);
+  assert.match(telegram, /editMessageReplyMarkup/);
+  assert.match(telegram, /inline_keyboard: \[\]/);
 });
 
 test("every community-data route uses the central membership guard", async () => {
