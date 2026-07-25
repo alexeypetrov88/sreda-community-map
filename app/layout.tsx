@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { Geist } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
         : "https";
   const origin = host ? `${protocol}://${host}` : "http://localhost:3000";
   const imageUrl = new URL("/og.png", origin).toString();
-  const title = "Sreda — find your people nearby";
+  const title = "Sreda Community Map — find your people nearby";
   const description =
     "A private city-level map for approved community members and their travel plans.";
 
@@ -31,8 +32,9 @@ export async function generateMetadata(): Promise<Metadata> {
     title,
     description,
     icons: {
-      icon: "/sreda-mark.svg",
-      shortcut: "/sreda-mark.svg",
+      icon: "/sreda-community-map-icon-v3-dark-green.png",
+      shortcut: "/sreda-community-map-icon-v3-dark-green.png",
+      apple: "/sreda-community-map-icon-v3-dark-green.png",
     },
     openGraph: {
       title,
@@ -56,6 +58,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
+        />
+      </head>
       <body className={`${geistSans.variable} antialiased`}>{children}</body>
     </html>
   );

@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { getD1, getDb } from "../../../db";
 import {
+  adminClaims,
   auditEvents,
   members,
   membershipRequests,
@@ -21,12 +22,14 @@ import {
   hasValidJoinCode,
   joinDisposition,
   nextMemberStatus,
+  normalizeTelegramUsername,
   parseJoinDecisionCallback,
   parseMemberActionCallback,
   type TelegramIdentity,
 } from "../../../lib/security";
 import {
   adminIds,
+  adminUsernames,
   answerCallbackQuery,
   sendMessage,
 } from "../../../lib/telegram";
@@ -55,7 +58,7 @@ function randomId() {
 }
 
 function appButton(appUrl: string) {
-  return [[{ text: "Open Sreda map", web_app: { url: appUrl } }]];
+  return [[{ text: "Open Sreda Community Map", web_app: { url: appUrl } }]];
 }
 
 function adminMenu(appUrl: string) {
@@ -77,6 +80,51 @@ function displayLabel(user: TelegramIdentity) {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+async function isAdmin(user: TelegramIdentity) {
+  if (adminIds().has(user.id)) return true;
+
+  const db = getDb();
+  const [pinned] = await db
+    .select({ telegramId: adminClaims.telegramId })
+    .from(adminClaims)
+    .where(eq(adminClaims.telegramId, user.id))
+    .limit(1);
+  if (pinned) return true;
+
+  const username = normalizeTelegramUsername(user.username);
+  if (!username || !adminUsernames().has(username)) return false;
+
+  // The database constraints make each configured username and each Telegram
+  // account a one-time claim. After this point, only the immutable numeric ID
+  // is used for authorization, even if the Telegram username later changes.
+  const claimed = await db
+    .insert(adminClaims)
+    .values({ username, telegramId: user.id })
+    .onConflictDoNothing()
+    .returning({ telegramId: adminClaims.telegramId });
+  return claimed.length === 1;
+}
+
+async function isAdminTelegramId(telegramId: number) {
+  if (adminIds().has(telegramId)) return true;
+  const [pinned] = await getDb()
+    .select({ telegramId: adminClaims.telegramId })
+    .from(adminClaims)
+    .where(eq(adminClaims.telegramId, telegramId))
+    .limit(1);
+  return Boolean(pinned);
+}
+
+async function adminChatIds() {
+  const pinned = await getDb()
+    .select({ telegramId: adminClaims.telegramId })
+    .from(adminClaims);
+  return new Set([
+    ...adminIds(),
+    ...pinned.map((member) => member.telegramId),
+  ]);
 }
 
 async function settleMessages(messages: Array<Promise<unknown>>) {
@@ -157,7 +205,7 @@ async function notifyAdmins(
   requestId: string,
   appUrl: string,
 ) {
-  const admins = [...adminIds()];
+  const admins = [...(await adminChatIds())];
   if (!admins.length) return false;
   const text = `<b>New Sreda request</b>\n${displayLabel(user)}`;
   return settleMessages(
@@ -187,7 +235,7 @@ async function handleStart(
     return;
   }
 
-  if (adminIds().has(user.id)) {
+  if (await isAdmin(user)) {
     await sendAdminHome(user, appUrl);
     return;
   }
@@ -298,7 +346,7 @@ async function handleJoinDecision(
   data: string,
   appUrl: string,
 ) {
-  if (!adminIds().has(admin.id)) {
+  if (!(await isAdmin(admin))) {
     await answerCallbackQuery(callbackId, "Admins only");
     return;
   }
@@ -446,7 +494,10 @@ async function sendMemberPage(
     .orderBy(asc(members.firstName), asc(members.telegramId))
     .limit(10)
     .offset(offset);
-  const visibleRows = rows.filter((member) => !adminIds().has(member.telegramId));
+  const visibleRows: typeof rows = [];
+  for (const member of rows) {
+    if (!(await isAdminTelegramId(member.telegramId))) visibleRows.push(member);
+  }
 
   if (!visibleRows.length) {
     await sendMessage(
@@ -493,12 +544,12 @@ async function handleMemberAction(
   admin: TelegramIdentity,
   data: string,
 ) {
-  if (!adminIds().has(admin.id)) {
+  if (!(await isAdmin(admin))) {
     await answerCallbackQuery(callbackId, "Admins only");
     return;
   }
   const parsed = parseMemberActionCallback(data);
-  if (!parsed || adminIds().has(parsed.telegramId)) {
+  if (!parsed || (await isAdminTelegramId(parsed.telegramId))) {
     await answerCallbackQuery(callbackId, "Invalid member action");
     return;
   }
@@ -586,7 +637,7 @@ async function handleAdminCallback(
   data: string,
   appUrl: string,
 ) {
-  if (!adminIds().has(admin.id)) {
+  if (!(await isAdmin(admin))) {
     await answerCallbackQuery(callbackId, "Admins only");
     return;
   }
@@ -658,7 +709,7 @@ export async function POST(request: Request) {
         await handleStart(message.from, start[1] ?? "", appUrl);
       } else if (
         /^\/admin(?:@\w+)?$/.test(message.text.trim()) &&
-        adminIds().has(message.from.id)
+        (await isAdmin(message.from))
       ) {
         await sendAdminHome(message.from, appUrl);
       }

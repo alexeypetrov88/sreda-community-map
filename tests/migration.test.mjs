@@ -50,6 +50,12 @@ test("1.0 migration preserves legacy city data and enforces invariants", async (
   `);
 
   await applyMigration(database, "0001_boring_betty_brant.sql");
+  database.exec(`
+    UPDATE members
+    SET approved_by = telegram_id, username = 'Legacy_Admin'
+    WHERE telegram_id = 1001
+  `);
+  await applyMigration(database, "0002_furry_rockslide.sql");
 
   const member = database
     .prepare(
@@ -100,5 +106,23 @@ test("1.0 migration preserves legacy city data and enforces invariants", async (
         UPDATE members SET status = 'self-approved' WHERE telegram_id = 1001
       `),
     /constraint/i,
+  );
+  assert.deepEqual(
+    {
+      ...database
+        .prepare(
+          "SELECT username, telegram_id AS telegramId FROM admin_claims",
+        )
+        .get(),
+    },
+    { username: "legacy_admin", telegramId: 1001 },
+  );
+  assert.throws(
+    () =>
+      database.exec(`
+        INSERT INTO admin_claims (username, telegram_id)
+        VALUES ('another_admin', 1001)
+      `),
+    /unique/i,
   );
 });

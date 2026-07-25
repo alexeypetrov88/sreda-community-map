@@ -65,18 +65,15 @@ button {
 }
 
 .brand-mark {
-  display: grid;
   width: 36px;
   height: 36px;
-  place-items: center;
-  border-radius: 50% 50% 46% 54%;
-  background: var(--green);
-  color: #fff;
-  transform: rotate(-8deg);
-}
-
-.brand-mark span {
-  transform: rotate(8deg);
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background:
+    var(--ink)
+    url("/sreda-community-map-icon-v3-dark-green.png")
+    center / cover no-repeat;
+  box-shadow: 0 2px 8px rgba(24, 53, 47, 0.15);
 }
 
 .eyebrow {
@@ -159,9 +156,15 @@ button {
 
 .date-stepper {
   display: grid;
+  min-width: 0;
   grid-template-columns: 42px minmax(0, 1fr) 42px;
   flex: 1;
   gap: 7px;
+}
+
+.date-stepper > * {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .date-input,
@@ -176,7 +179,13 @@ button {
 
 .date-input {
   width: 100%;
+  max-width: 100%;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   padding: 10px 8px;
+  -webkit-appearance: none;
+  appearance: none;
   text-align: center;
   font-size: 14px;
   font-weight: 650;
@@ -406,8 +415,28 @@ button {
 
 .two-columns {
   display: grid;
+  width: 100%;
+  min-width: 0;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+}
+
+.two-columns > *,
+.two-columns .label {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.two-columns input[type="date"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  inline-size: 100%;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .label {

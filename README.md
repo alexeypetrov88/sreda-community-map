@@ -3,10 +3,10 @@
 [![CI](https://github.com/alexeypetrov88/sreda-community-map/actions/workflows/ci.yml/badge.svg)](https://github.com/alexeypetrov88/sreda-community-map/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Sreda is an open-source Telegram bot and Mini App that helps members of a
-closed community find one another by city. Members can share a home city,
-record a current trip, schedule future trips, inspect a date-aware map, and ask
-who will be in a city on selected dates.
+Sreda Community Map is an open-source Telegram Mini App and companion bot for
+the Sreda community. It helps members find one another by city: they can share
+a home city, record a current trip, schedule future trips, inspect a date-aware
+map, and ask who will be in a city on selected dates.
 
 The interface is intentionally structured: buttons, city search, and date
 pickers. There is no LLM, natural-language parser, live GPS tracking, or
@@ -23,8 +23,9 @@ free-form location field.
 - A new member follows the private Sreda invitation link and becomes `pending`.
 - Finding the bot or pressing **Start** without that invitation cannot create a
   membership request.
-- One of the numeric Telegram IDs in `SREDA_ADMIN_IDS` receives **Approve** and
-  **Reject** buttons.
+- A configured admin receives **Approve** and **Reject** buttons. Each configured
+  username can bootstrap one admin account and is then permanently pinned to
+  that account's immutable numeric Telegram identity.
 - Approved members open the Mini App from the bot.
 - A member can set or change a country-and-city-level home location.
 - **I’m travelling now** creates a trip beginning today.
@@ -110,7 +111,7 @@ verification. The webhook separately checks
 - A Telegram bot created with [BotFather](https://t.me/BotFather)
 - Cloudflare-compatible Worker hosting with a D1 binding named `DB`, or
   ChatGPT Sites with D1 enabled
-- Numeric Telegram user IDs for at least one administrator
+- At least one numeric Telegram admin ID or configured admin username
 
 ## Environment
 
@@ -123,7 +124,8 @@ cp .env.example .env.local
 | Variable | Required | Purpose |
 |---|---:|---|
 | `BOT_TOKEN` | Yes | BotFather token; also verifies Mini App sessions |
-| `SREDA_ADMIN_IDS` | Yes | Comma-separated Telegram numeric IDs |
+| `SREDA_ADMIN_IDS` | Conditional | Comma-separated immutable Telegram numeric IDs (preferred for production) |
+| `SREDA_ADMIN_USERNAMES` | Conditional | Comma-separated usernames; each can bootstrap one admin and is then pinned to that account's numeric ID |
 | `SREDA_APP_URL` | Yes | Canonical HTTPS Mini App URL used in bot buttons |
 | `SREDA_JOIN_CODE` | Yes | Private random value carried by Sreda’s Telegram invitation link |
 | `TELEGRAM_WEBHOOK_SECRET` | Yes | Authenticates webhook requests |
