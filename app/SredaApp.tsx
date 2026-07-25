@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Map as LeafletMap } from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 declare global {
   interface Window {
@@ -12,53 +14,16 @@ declare global {
         themeParams?: Record<string, string>;
       };
     };
-    L?: LeafletApi;
   }
 }
 
-type LeafletMap = {
-  setView(location: [number, number], zoom: number): LeafletMap;
-  fitBounds(
-    bounds: [number, number][],
-    options: { padding: [number, number]; maxZoom: number },
-  ): LeafletMap;
-  remove(): void;
-};
-
-type LeafletApi = {
-  map(
-    element: HTMLDivElement,
-    options: {
-      zoomControl: boolean;
-      attributionControl: boolean;
-      worldCopyJump: boolean;
-    },
-  ): LeafletMap;
-  tileLayer(
-    url: string,
-    options: { maxZoom: number; attribution: string },
-  ): { addTo(map: LeafletMap): void };
-  divIcon(options: {
-    className: string;
-    html: string;
-    iconSize: [number, number];
-    iconAnchor: [number, number];
-    popupAnchor: [number, number];
-  }): unknown;
-  marker(
-    location: [number, number],
-    options: { icon: unknown },
-  ): {
-    addTo(map: LeafletMap): { bindPopup(html: string): void };
-  };
-};
+type LeafletApi = typeof import("leaflet");
 
 type Place = {
+  placeId: string;
   city: string;
   country: string;
   countryCode: string;
-  lat: number;
-  lng: number;
 };
 
 type Plan = Place & {
@@ -67,12 +32,14 @@ type Plan = Place & {
   endsOn: string;
 };
 
-type Person = Place & {
+type Person = {
+  city: string;
+  country: string;
+  countryCode: string;
   name: string;
-  username?: string | null;
+  lat: number;
+  lng: number;
   mode: "home" | "travelling";
-  startsOn?: string | null;
-  endsOn?: string | null;
 };
 
 type MemberData = {
@@ -87,13 +54,21 @@ type MemberData = {
 
 type PresencePerson = {
   name: string;
-  username?: string | null;
-  mode: "home" | "travelling";
-  firstMatchingDate: string;
-  lastMatchingDate: string;
+  travelling: boolean;
+  periods: Array<{
+    from: string;
+    to: string;
+    mode: "home" | "travelling";
+  }>;
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+function today() {
+  const value = new Date();
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function addDays(date: string, amount: number) {
   const value = new Date(`${date}T12:00:00Z`);
@@ -130,28 +105,8 @@ function escapeHtml(value: string) {
 let leafletPromise: Promise<LeafletApi> | null = null;
 function loadLeaflet() {
   if (typeof window === "undefined") return Promise.reject(new Error("No window"));
-  if (window.L) return Promise.resolve(window.L);
   if (leafletPromise) return leafletPromise;
-  leafletPromise = new Promise((resolve, reject) => {
-    if (!document.querySelector('link[data-sreda-leaflet="true"]')) {
-      const link = document.createElement("link");
-      link.rel = "stylesheet";
-      link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-      link.dataset.sredaLeaflet = "true";
-      document.head.appendChild(link);
-    }
-    const script = document.createElement("script");
-    script.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-    script.integrity =
-      "sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=";
-    script.crossOrigin = "";
-    script.onload = () => {
-      if (window.L) resolve(window.L);
-      else reject(new Error("Map library did not initialise"));
-    };
-    script.onerror = () => reject(new Error("Map library failed to load"));
-    document.head.appendChild(script);
-  });
+  leafletPromise = import("leaflet");
   return leafletPromise;
 }
 
@@ -325,6 +280,7 @@ export function SredaApp() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const [whoPlace, setWhoPlace] = useState<Place | null>(null);
   const [whoFrom, setWhoFrom] = useState(today());
   const [whoTo, setWhoTo] = useState(today());
@@ -366,19 +322,20 @@ export function SredaApp() {
     try {
       const data = await api<MemberData>("/api/me");
       setMemberData(data);
-      if (!whoPlace) {
+      setWhoPlace((currentPlace) => {
+        if (currentPlace) return currentPlace;
         const current = data.upcomingPlans.find(
           (plan) => plan.startsOn <= today() && plan.endsOn >= today(),
         );
-        setWhoPlace(current ?? data.member.home);
-      }
+        return current ?? data.member.home;
+      });
       setFatalError("");
     } catch (reason) {
       setFatalError(reason instanceof Error ? reason.message : "Could not open Sreda");
     } finally {
       setLoading(false);
     }
-  }, [api, initData, whoPlace]);
+  }, [api, initData]);
 
   useEffect(() => {
     void Promise.resolve().then(loadMember);
@@ -428,12 +385,16 @@ export function SredaApp() {
       if (formMode === "home") {
         await api("/api/home", {
           method: "POST",
-          body: JSON.stringify(formPlace),
+          body: JSON.stringify({ placeId: formPlace.placeId }),
         });
       } else {
         await api("/api/plans", {
           method: "POST",
-          body: JSON.stringify({ ...formPlace, startsOn, endsOn }),
+          body: JSON.stringify({
+            placeId: formPlace.placeId,
+            startsOn,
+            endsOn,
+          }),
         });
       }
       setFormMode(null);
@@ -442,6 +403,38 @@ export function SredaApp() {
       setFormError(reason instanceof Error ? reason.message : "Could not save");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function removeHome() {
+    try {
+      await api("/api/home", { method: "DELETE" });
+      await loadMember();
+    } catch (reason) {
+      setFormError(
+        reason instanceof Error ? reason.message : "Could not remove home city",
+      );
+    }
+  }
+
+  async function deleteAccount() {
+    if (!deleteAccountConfirm) {
+      setDeleteAccountConfirm(true);
+      return;
+    }
+    try {
+      await api("/api/me", {
+        method: "DELETE",
+        body: JSON.stringify({ confirmation: "delete-my-data" }),
+      });
+      setMemberData(null);
+      setFatalError(
+        "Your Sreda profile, home city and trips have been permanently deleted.",
+      );
+    } catch (reason) {
+      setFormError(
+        reason instanceof Error ? reason.message : "Could not delete your data",
+      );
     }
   }
 
@@ -471,8 +464,7 @@ export function SredaApp() {
     setWhoPeople(null);
     try {
       const params = new URLSearchParams({
-        city: whoPlace.city,
-        countryCode: whoPlace.countryCode,
+        placeId: whoPlace.placeId,
         from,
         to,
       });
@@ -506,8 +498,8 @@ export function SredaApp() {
           <div className="brand-mark"><span>S</span></div>
           <h1>Sreda</h1>
           <p>
-            This map is private. Open it from the Sreda Telegram bot and ask an
-            admin to approve your membership.
+            This map is private. Open the invitation link shared inside Sreda,
+            then wait for an admin to approve your membership.
           </p>
         </div>
       </main>
@@ -625,9 +617,22 @@ export function SredaApp() {
             <section className="card panel">
               <div className="panel-title">
                 <h3>Home city</h3>
-                <button className="button secondary" onClick={() => openForm("home")}>
-                  {memberData?.member.home ? "Change" : "Add"}
-                </button>
+                <div className="form-actions">
+                  {memberData?.member.home && (
+                    <button
+                      className="button ghost"
+                      onClick={() => void removeHome()}
+                    >
+                      Remove
+                    </button>
+                  )}
+                  <button
+                    className="button secondary"
+                    onClick={() => openForm("home")}
+                  >
+                    {memberData?.member.home ? "Change" : "Add"}
+                  </button>
+                </div>
               </div>
               {memberData?.member.home ? (
                 <>
@@ -728,6 +733,22 @@ export function SredaApp() {
                 ))
               )}
             </section>
+
+            <section className="card panel danger-zone">
+              <div>
+                <h3>Delete my Sreda data</h3>
+                <p className="muted">
+                  Permanently removes your profile, home city, membership request,
+                  and every trip. You would need a fresh invitation to rejoin.
+                </p>
+              </div>
+              <button
+                className="plan-delete"
+                onClick={() => void deleteAccount()}
+              >
+                {deleteAccountConfirm ? "Confirm permanent deletion" : "Delete my data"}
+              </button>
+            </section>
           </div>
         </>
       )}
@@ -793,17 +814,29 @@ export function SredaApp() {
                 <div className="empty">Nobody is listed there on those dates.</div>
               ) : (
                 whoPeople.map((person) => (
-                  <div className="person-row" key={`${person.name}-${person.firstMatchingDate}`}>
+                  <div
+                    className="person-row"
+                    key={`${person.name}-${person.periods[0]?.from}`}
+                  >
                     <div>
                       <div className="person-name">{person.name}</div>
-                      <div className="person-meta">
-                        {person.firstMatchingDate === person.lastMatchingDate
-                          ? friendlyDate(person.firstMatchingDate)
-                          : `${friendlyDate(person.firstMatchingDate)} – ${friendlyDate(person.lastMatchingDate)}`}
-                      </div>
+                      {person.periods.map((period) => (
+                        <div
+                          className="person-meta"
+                          key={`${period.from}-${period.to}-${period.mode}`}
+                        >
+                          {period.from === period.to
+                            ? friendlyDate(period.from)
+                            : `${friendlyDate(period.from)} – ${friendlyDate(period.to)}`}
+                          {" · "}
+                          {period.mode === "travelling" ? "visiting" : "home"}
+                        </div>
+                      ))}
                     </div>
-                    <span className={`pill${person.mode === "travelling" ? " travel" : ""}`}>
-                      {person.mode === "travelling" ? "Visiting" : "Home"}
+                    <span
+                      className={`pill${person.travelling ? " travel" : ""}`}
+                    >
+                      {person.travelling ? "Visiting" : "Home"}
                     </span>
                   </div>
                 ))

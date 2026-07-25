@@ -1,117 +1,101 @@
 # Deployment and Telegram setup
 
-## 1. Create the bot
+## 1. Create credentials
 
-Open [BotFather](https://t.me/BotFather), run `/newbot`, and save the token in a
-secret manager. Do not put it in `.env.example`, GitHub Actions logs, issues, or
-screenshots.
+Create the bot through [BotFather](https://t.me/BotFather). Collect numeric
+Telegram IDs for every administrator; usernames are mutable and unsuitable for
+authorization.
 
-Collect the numeric Telegram user IDs of each administrator. Usernames are
-mutable and are not suitable for authorization.
+Generate three different random values:
 
-Generate a long random webhook secret using a password manager or cryptographic
-random generator.
+- the BotFather token;
+- a URL-safe Sreda join code of 16–64 characters;
+- a Telegram webhook secret of at least 32 characters.
+
+Do not put real values in GitHub, screenshots, command history, or
+`.env.example`.
 
 ## 2. Provision storage
 
 The Worker expects a D1 binding named `DB`. Apply every migration in `drizzle/`
-in order. The deployment must fail closed if the database or migration is
-missing.
+in order. For Sites, `.openai/hosting.json` declares the logical binding and
+packaged migrations are applied during deployment.
 
-For ChatGPT Sites, `.openai/hosting.json` declares the logical `DB` binding and
-Sites applies packaged migrations during deployment.
-
-For a direct Cloudflare deployment, create your own D1 database, replace the
-placeholder database ID in the generated Worker configuration, and apply the
-migration with Wrangler before deploying.
+Migration `0001` preserves pre-1.0 home/trip data by converting each existing
+location to a server-owned legacy place, adds membership lifecycle tables, and
+creates the atomic overlap trigger.
 
 ## 3. Configure runtime values
-
-Set:
 
 ```text
 BOT_TOKEN
 SREDA_ADMIN_IDS
+SREDA_APP_URL
+SREDA_JOIN_CODE
 TELEGRAM_WEBHOOK_SECRET
 GEOCODER_CONTACT
 ```
 
-Optionally set `GEOCODER_URL` to another Nominatim-compatible search endpoint.
+`SREDA_APP_URL` is the canonical HTTPS root used in Telegram buttons.
+`GEOCODER_URL` optionally replaces the Nominatim-compatible default.
 
-`BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` are secrets.
-`SREDA_ADMIN_IDS` is security-sensitive configuration even though Telegram IDs
-are not authentication credentials.
+Store `BOT_TOKEN`, `SREDA_JOIN_CODE`, and `TELEGRAM_WEBHOOK_SECRET` as hosting
+secrets. Treat the admin allowlist as security-sensitive configuration.
 
-## 4. Deploy HTTPS application
-
-Build and validate:
+## 4. Validate and deploy
 
 ```bash
 npm ci
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 npm test
+npm run audit:prod
 ```
 
-Deploy the exact tested commit. The root URL must be accessible from Telegram.
-Community APIs remain protected by Telegram signature and membership checks.
+Deploy the exact tested source and its migrations.
 
-## 5. Register the webhook
+## 5. Register Telegram
 
-Replace the placeholders locally:
+Register `https://YOUR_HOST/api/telegram` using `setWebhook`, the configured
+secret token, `message` and `callback_query` allowed updates, and
+`drop_pending_updates: true`. Never paste a URL containing the bot token into a
+public issue or log.
 
-```bash
-curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://YOUR_HOST/api/telegram",
-    "secret_token": "YOUR_TELEGRAM_WEBHOOK_SECRET",
-    "allowed_updates": ["message", "callback_query"],
-    "drop_pending_updates": true
-  }'
+Configure the root URL as the bot’s Main Mini App. Distribute this link only
+inside Sreda:
+
+```text
+https://t.me/YOUR_BOT_USERNAME?start=YOUR_SREDA_JOIN_CODE
 ```
 
-Verify:
+Finding the bot without this payload creates no member or request. Rotate the
+code and redistribute the link if it escapes the community.
 
-```bash
-curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
-```
+Admins can use `/admin` to open the button-based membership menu.
 
-Never paste command output containing the token into a public issue.
+## 6. Acceptance test
 
-## 6. Configure the Mini App
+Use separate synthetic admin and member accounts:
 
-In BotFather, configure the bot’s **Main Mini App** or menu button to the HTTPS
-root URL. The server supplies the same URL in the approval message’s
-`web_app` button.
+1. Starting without the join payload creates no pending account.
+2. The private link creates one pending, expiring request.
+3. Pending and forged sessions cannot read any API.
+4. A non-admin callback cannot decide the request.
+5. Approval grants map access.
+6. A selected city can be saved as home; arbitrary coordinates are rejected.
+7. Current and future trips affect the correct dates.
+8. A concurrent or ordinary overlapping plan is rejected.
+9. Presence results split non-contiguous intervals.
+10. Plan cancellation is owner-scoped.
+11. Revocation immediately returns `403` on subsequent data requests.
+12. Restoration returns access.
+13. Self-service deletion removes the member and cascading plans.
+14. Static/browser-only visits reveal no community data.
 
-## 7. Acceptance test
+## 7. Operations
 
-Use at least two distinct Telegram accounts: one configured admin and one
-ordinary member.
-
-1. Ordinary member starts the bot.
-2. Member sees a pending response and cannot open data.
-3. Admin receives the request and approves it.
-4. Member receives the Mini App button.
-5. Member sets a home city.
-6. Map shows the member at home.
-7. Member creates a current trip; map colour and city change today.
-8. A future date outside the trip returns the member home.
-9. Member adds a future trip.
-10. An overlapping plan is rejected.
-11. **Who is here today?** returns the expected member.
-12. Member cancels a plan with two button presses.
-13. A non-Telegram browser sees only the locked shell.
-14. A forged or missing `initData` API request returns `401`.
-15. A valid but unapproved user returns `403`.
-
-After testing, delete synthetic test accounts or document why they remain.
-
-## 8. Operational checks
-
-- Turn on hosting error monitoring.
-- Review dependency alerts.
-- Back up or export the database according to the retention policy.
-- Rotate secrets after any accidental disclosure.
-- Periodically review the admin allowlist and approved membership.
+- Monitor errors without recording request authorization headers.
+- Review dependency alerts and run the production audit before releases.
+- Back up/export D1 according to the published retention policy.
+- Periodically review admin and approved-member lists.
+- Rotate all affected secrets after suspected disclosure.

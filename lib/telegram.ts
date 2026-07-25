@@ -19,15 +19,26 @@ export async function telegramApi(
 ) {
   const token = runtimeConfig().BOT_TOKEN;
   if (!token) throw new Error("BOT_TOKEN is not configured");
-  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  const result = (await response.json()) as {
-    ok: boolean;
-    description?: string;
-  };
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://api.telegram.org/bot${token}/${method}`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(8_000),
+      },
+    );
+  } catch {
+    throw new Error(`Telegram ${method} is temporarily unavailable`);
+  }
+  let result: { ok: boolean; description?: string };
+  try {
+    result = (await response.json()) as typeof result;
+  } catch {
+    throw new Error(`Telegram ${method} returned an invalid response`);
+  }
   if (!result.ok) {
     throw new Error(result.description ?? `Telegram ${method} failed`);
   }

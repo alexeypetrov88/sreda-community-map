@@ -5,32 +5,36 @@
 ### Telegram webhook
 
 `POST /api/telegram` receives private-chat messages and callback queries. It
-rejects requests without the configured Telegram webhook secret header.
+requires Telegram’s configured webhook secret and records successfully handled
+`update_id` values to make retries idempotent.
 
-`/start` upserts the Telegram identity:
+`/start <private-code>` creates an expiring membership request:
 
 - configured administrators are approved automatically;
 - existing approved members receive the Mini App button;
 - pending members receive a waiting message;
-- new or previously rejected members become pending and notify every
-  configured administrator.
+- new members must arrive through the private Sreda invitation link;
+- rejected, revoked, and blocked members cannot create another request;
+- configured administrators receive one-time **Approve** and **Reject**
+  callbacks tied to a request record.
 
-Approval callbacks are accepted only from IDs in `SREDA_ADMIN_IDS`. The
-allowlist is runtime configuration, not a database role that another member can
-grant.
+Decisions expire after seven days and only transition a current `pending`
+request. `/admin` opens button-based pending, active, and inactive member lists.
+Admins can revoke or restore access. Hardcoded admin IDs cannot be revoked
+through the bot. Revocation clears the member’s home and trips.
 
 ### Mini App authentication
 
-The browser sends Telegram’s raw `initData` in
-`X-Telegram-Init-Data`. The server:
+The browser sends Telegram’s raw `initData` in `X-Telegram-Init-Data`. The
+server:
 
-1. parses the query string;
-2. requires `hash`, `auth_date`, and `user`;
-3. rejects stale sessions;
-4. derives the HMAC secret from `BOT_TOKEN` and `WebAppData`;
-5. compares hashes in constant time;
+1. requires a bounded query string containing `hash`, `auth_date`, and `user`;
+2. rejects sessions older than 15 minutes or unexpectedly far in the future;
+3. derives the HMAC secret from `BOT_TOKEN` and `WebAppData`;
+4. compares hashes in constant time;
+5. validates and bounds Telegram profile fields;
 6. loads the member by the signed Telegram ID;
-7. requires `approved` status.
+7. requires current `approved` status.
 
 The client-side `initDataUnsafe` object is not used for authorization.
 
@@ -39,53 +43,63 @@ The client-side `initDataUnsafe` object is not used for authorization.
 | Route | Method | Responsibility |
 |---|---|---|
 | `/api/me` | GET | Profile, home city and upcoming trips |
-| `/api/home` | POST | Set or change the authenticated member’s home |
+| `/api/me` | DELETE | Permanently delete the member and their trips |
+| `/api/home` | POST | Set home using a canonical server place ID |
+| `/api/home` | DELETE | Remove the authenticated member’s home |
 | `/api/plans` | GET | List the authenticated member’s plans |
-| `/api/plans` | POST | Add a non-overlapping trip |
+| `/api/plans` | POST | Add a canonical-place, non-overlapping trip |
 | `/api/plans?id=…` | DELETE | Delete an owned trip |
-| `/api/map?date=…` | GET | Presence of approved members on one date |
-| `/api/presence` | GET | Members in a city over a date range |
+| `/api/map?date=…` | GET | Minimal presence data for one bounded date |
+| `/api/presence` | GET | Members at a canonical place over a date range |
 | `/api/geocode?q=…` | GET | Explicit, cached city lookup |
 | `/api/telegram` | POST | Telegram webhook |
 
+Every community route authenticates server-side. Protected responses use
+`Cache-Control: private, no-store`. General and route-specific D1-backed limits
+bound reads, writes, join attempts, and geocoding.
+
 ### Presence rules
 
-- Trip date ranges are inclusive.
+- Trip ranges are inclusive.
 - An active trip overrides home for that date.
-- Overlapping trips are rejected.
-- A member without a home city and without an active trip is absent from the
-  map.
-- Presence searches show someone if they are in the selected city on at least
-  one day of the range.
+- A database trigger rejects overlapping trips atomically.
+- A member without home and without an active trip is absent from the map.
+- Presence search returns separate contiguous intervals rather than implying
+  presence across gaps.
 - Travellers sort before residents.
 
-### Data model
+## Data model
+
+`places`
+
+- server-created opaque place ID and normalized canonical key
+- geocoder-provided city, country, country code, and centroid
 
 `members`
 
-- Telegram identity and status
-- approval timestamps and approving admin ID
-- optional home city, country, country code and city-centre coordinates
+- bounded Telegram identity fields
+- `pending`, `approved`, `rejected`, `revoked`, or `blocked` status
+- approval/status timestamps and approving admin ID
+- optional foreign key to a canonical home place
 
 `plans`
 
-- opaque plan ID
-- member ID
+- opaque owner-scoped plan ID
 - inclusive start/end date
-- city, country, country code and city-centre coordinates
+- foreign key to a canonical place
 
-`city_search_cache`
+`membership_requests`, `audit_events`, `telegram_updates`, and
+`rate_limit_counters` provide expiring decisions, lifecycle accountability,
+webhook idempotency, and abuse controls.
 
-- normalized query
-- serialized geocoder results
-- creation time
+`city_search_cache` stores one-way query hashes and public place-result fields
+for 90 days. It contains neither the raw search text nor a Telegram ID.
 
 ## Deliberate constraints
 
-- City-level precision only
-- No live tracking
+- City-level precision only; browser-supplied coordinates are never accepted
+- No live tracking, exact addresses, or device geolocation
 - No overlapping trips
-- No user-authored notes
-- No LLM
-- No public unauthenticated data API
-- No client-side source of truth for membership
+- No user-authored notes or LLM
+- No public unauthenticated community-data API
+- No client-side source of truth for identity or membership

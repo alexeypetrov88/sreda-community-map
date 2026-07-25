@@ -1,0 +1,599 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "8d87f53b-266d-4e61-a589-7bac9be85ed7",
+  "prevId": "612c7420-e3e7-405f-9c34-b74ef546e6b7",
+  "tables": {
+    "audit_events": {
+      "name": "audit_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "actor_telegram_id": {
+          "name": "actor_telegram_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "target_telegram_id": {
+          "name": "target_telegram_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "audit_events_created_idx": {
+          "name": "audit_events_created_idx",
+          "columns": [
+            "created_at"
+          ],
+          "isUnique": false
+        },
+        "audit_events_target_idx": {
+          "name": "audit_events_target_idx",
+          "columns": [
+            "target_telegram_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "audit_events_type_check": {
+          "name": "audit_events_type_check",
+          "value": "length(\"audit_events\".\"type\") BETWEEN 1 AND 64"
+        }
+      }
+    },
+    "city_search_cache": {
+      "name": "city_search_cache",
+      "columns": {
+        "query": {
+          "name": "query",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "results_json": {
+          "name": "results_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "members": {
+      "name": "members",
+      "columns": {
+        "telegram_id": {
+          "name": "telegram_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "requested_at": {
+          "name": "requested_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status_changed_at": {
+          "name": "status_changed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "home_place_id": {
+          "name": "home_place_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "members_status_idx": {
+          "name": "members_status_idx",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "members_home_place_id_places_id_fk": {
+          "name": "members_home_place_id_places_id_fk",
+          "tableFrom": "members",
+          "tableTo": "places",
+          "columnsFrom": [
+            "home_place_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "members_status_check": {
+          "name": "members_status_check",
+          "value": "\"members\".\"status\" IN ('pending','approved','rejected','revoked','blocked')"
+        },
+        "members_first_name_check": {
+          "name": "members_first_name_check",
+          "value": "length(\"members\".\"first_name\") BETWEEN 1 AND 100"
+        },
+        "members_last_name_check": {
+          "name": "members_last_name_check",
+          "value": "\"members\".\"last_name\" IS NULL OR length(\"members\".\"last_name\") <= 100"
+        },
+        "members_username_check": {
+          "name": "members_username_check",
+          "value": "\"members\".\"username\" IS NULL OR length(\"members\".\"username\") <= 64"
+        }
+      }
+    },
+    "membership_requests": {
+      "name": "membership_requests",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "telegram_id": {
+          "name": "telegram_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "membership_requests_member_idx": {
+          "name": "membership_requests_member_idx",
+          "columns": [
+            "telegram_id"
+          ],
+          "isUnique": false
+        },
+        "membership_requests_status_idx": {
+          "name": "membership_requests_status_idx",
+          "columns": [
+            "status",
+            "expires_at"
+          ],
+          "isUnique": false
+        },
+        "membership_requests_one_pending_idx": {
+          "name": "membership_requests_one_pending_idx",
+          "columns": [
+            "telegram_id"
+          ],
+          "isUnique": true,
+          "where": "\"membership_requests\".\"status\" = 'pending'"
+        }
+      },
+      "foreignKeys": {
+        "membership_requests_telegram_id_members_telegram_id_fk": {
+          "name": "membership_requests_telegram_id_members_telegram_id_fk",
+          "tableFrom": "membership_requests",
+          "tableTo": "members",
+          "columnsFrom": [
+            "telegram_id"
+          ],
+          "columnsTo": [
+            "telegram_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "membership_requests_status_check": {
+          "name": "membership_requests_status_check",
+          "value": "\"membership_requests\".\"status\" IN ('pending','approved','rejected','expired')"
+        }
+      }
+    },
+    "places": {
+      "name": "places",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "canonical_key": {
+          "name": "canonical_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "country_code": {
+          "name": "country_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lat": {
+          "name": "lat",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "lng": {
+          "name": "lng",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "places_canonical_key_idx": {
+          "name": "places_canonical_key_idx",
+          "columns": [
+            "canonical_key"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "places_id_check": {
+          "name": "places_id_check",
+          "value": "length(\"places\".\"id\") BETWEEN 16 AND 64"
+        },
+        "places_city_check": {
+          "name": "places_city_check",
+          "value": "length(\"places\".\"city\") BETWEEN 1 AND 100"
+        },
+        "places_country_check": {
+          "name": "places_country_check",
+          "value": "length(\"places\".\"country\") BETWEEN 1 AND 100"
+        },
+        "places_country_code_check": {
+          "name": "places_country_code_check",
+          "value": "length(\"places\".\"country_code\") = 2"
+        },
+        "places_lat_check": {
+          "name": "places_lat_check",
+          "value": "\"places\".\"lat\" BETWEEN -90 AND 90"
+        },
+        "places_lng_check": {
+          "name": "places_lng_check",
+          "value": "\"places\".\"lng\" BETWEEN -180 AND 180"
+        }
+      }
+    },
+    "plans": {
+      "name": "plans",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "telegram_id": {
+          "name": "telegram_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "place_id": {
+          "name": "place_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "starts_on": {
+          "name": "starts_on",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ends_on": {
+          "name": "ends_on",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "plans_member_idx": {
+          "name": "plans_member_idx",
+          "columns": [
+            "telegram_id"
+          ],
+          "isUnique": false
+        },
+        "plans_dates_idx": {
+          "name": "plans_dates_idx",
+          "columns": [
+            "starts_on",
+            "ends_on"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "plans_telegram_id_members_telegram_id_fk": {
+          "name": "plans_telegram_id_members_telegram_id_fk",
+          "tableFrom": "plans",
+          "tableTo": "members",
+          "columnsFrom": [
+            "telegram_id"
+          ],
+          "columnsTo": [
+            "telegram_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "plans_place_id_places_id_fk": {
+          "name": "plans_place_id_places_id_fk",
+          "tableFrom": "plans",
+          "tableTo": "places",
+          "columnsFrom": [
+            "place_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "plans_dates_check": {
+          "name": "plans_dates_check",
+          "value": "\"plans\".\"starts_on\" <= \"plans\".\"ends_on\""
+        }
+      }
+    },
+    "rate_limit_counters": {
+      "name": "rate_limit_counters",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "count": {
+          "name": "count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "telegram_updates": {
+      "name": "telegram_updates",
+      "columns": {
+        "update_id": {
+          "name": "update_id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

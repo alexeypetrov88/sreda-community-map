@@ -17,8 +17,9 @@ Thank you for helping improve Sreda Community Map.
 npm install
 npm run db:generate
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 npm test
+npm run audit:prod
 ```
 
 If the schema changes, include the generated Drizzle migration and inspect the

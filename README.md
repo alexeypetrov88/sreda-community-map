@@ -14,12 +14,15 @@ free-form location field.
 
 ![Sreda Community Map social preview](public/og.png)
 
-> **Project status:** early MVP. Review the privacy model and run your own
-> security assessment before inviting a real community.
+> **Project status:** 1.0. The release includes server-owned city records,
+> expiring one-time approval decisions, durable revocation, request throttling,
+> audit events, self-service deletion, and automated authentication tests.
 
 ## Product behaviour
 
-- A new Telegram user presses **Start** and becomes `pending`.
+- A new member follows the private Sreda invitation link and becomes `pending`.
+- Finding the bot or pressing **Start** without that invitation cannot create a
+  membership request.
 - One of the numeric Telegram IDs in `SREDA_ADMIN_IDS` receives **Approve** and
   **Reject** buttons.
 - Approved members open the Mini App from the bot.
@@ -27,11 +30,15 @@ free-form location field.
 - **I’m travelling now** creates a trip beginning today.
 - **Plan a future trip** records a city and inclusive start/end dates.
 - Members can list their plans and cancel one with a two-step button.
+- Members can remove their home city or permanently delete their own profile
+  and trips.
 - The map can be moved into the future one day at a time or by date picker.
 - Travellers use a different map colour from members at home.
 - **Who is here today?** and date-range search return matching members.
 - Overlapping trips for the same member are rejected to avoid ambiguous
   locations.
+- Admins can list pending, active, and inactive members in Telegram and revoke
+  or restore access using buttons.
 
 All approved members currently have the same visibility: they can see the
 display name and city-level presence of every other approved member.
@@ -71,13 +78,15 @@ See [Architecture](docs/architecture.md) and
 | Telegram numeric ID | Yes |
 | Telegram name and optional username | Yes |
 | Membership and approval status | Yes |
-| Home city, country and city-centre coordinates | Optional |
-| Trip city, country, city-centre coordinates and dates | Optional |
+| Canonical home city and country | Optional |
+| Canonical trip city, country and dates | Optional |
 | Exact address or live GPS | No |
 | Phone number or Telegram chat history | No |
 | Free-form travel notes | No |
 
-Coordinates represent a city centroid, not a person’s physical position.
+Coordinates are created only from server-side geocoder results and represent a
+city centroid, not a person’s physical position. Location-write APIs accept a
+server-issued place ID and never accept browser-supplied coordinates.
 
 ## Security boundary
 
@@ -89,6 +98,7 @@ HTTPS Mini App URL. Community data is not public:
 3. the session must be fresh;
 4. the Telegram ID must have `approved` status;
 5. mutations are scoped to the authenticated member.
+6. API responses are non-cacheable and requests are rate-limited.
 
 The Telegram ID in browser state is never trusted without signature
 verification. The webhook separately checks
@@ -114,12 +124,14 @@ cp .env.example .env.local
 |---|---:|---|
 | `BOT_TOKEN` | Yes | BotFather token; also verifies Mini App sessions |
 | `SREDA_ADMIN_IDS` | Yes | Comma-separated Telegram numeric IDs |
+| `SREDA_APP_URL` | Yes | Canonical HTTPS Mini App URL used in bot buttons |
+| `SREDA_JOIN_CODE` | Yes | Private random value carried by Sreda’s Telegram invitation link |
 | `TELEGRAM_WEBHOOK_SECRET` | Yes | Authenticates webhook requests |
 | `GEOCODER_CONTACT` | For public Nominatim | Identifies the application operator |
 | `GEOCODER_URL` | No | Replaces the default Nominatim-compatible endpoint |
 
-Never commit real values. `BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` must be
-stored as hosting secrets.
+Never commit real values. `BOT_TOKEN`, `SREDA_JOIN_CODE`, and
+`TELEGRAM_WEBHOOK_SECRET` must be stored as hosting secrets.
 
 ## Local development
 
@@ -137,8 +149,9 @@ Validation:
 
 ```bash
 npm run lint
-npx tsc --noEmit
+npm run typecheck
 npm test
+npm run audit:prod
 ```
 
 ## Deployment
@@ -169,16 +182,12 @@ grows.
 
 OpenStreetMap attribution remains visible on the map.
 
-## Roadmap
+## Post-1.0 roadmap
 
-- Member-controlled visibility settings
-- Account/data deletion
-- Admin member-management screen and audit history
-- Data export and retention automation
-- Automated Telegram signature and authorization tests
+- Per-member visibility preferences
+- Operator-facing audit viewer and retention automation
 - Optional private Google Sheets export for administrators
-- Localization
-- Accessible non-map list view
+- Localization and an accessible non-map list view
 
 ## Contributing
 

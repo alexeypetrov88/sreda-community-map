@@ -19,6 +19,7 @@ test("builds the private Sreda entry point", async () => {
   assert.match(serverBundle, /Sreda — find your people nearby/i);
   assert.match(clientBundle, /private community map/i);
   assert.match(clientBundle, /Who is here today/i);
+  assert.doesNotMatch(clientBundle, /unpkg\.com\/leaflet/i);
   assert.doesNotMatch(`${serverBundle}\n${clientBundle}`, /codex-preview|react-loading-skeleton/i);
 });
 
@@ -32,5 +33,34 @@ test("removes the disposable starter and declares durable storage", async () => 
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.match(schema, /members/);
   assert.match(schema, /plans/);
+  assert.match(schema, /membershipRequests/);
+  assert.match(schema, /auditEvents/);
+  assert.match(packageJson, /"version": "1\.0\.0"/);
   await assert.rejects(access(new URL("app/_sites-preview/SkeletonPreview.tsx", root)));
+});
+
+test("every community-data route uses the central membership guard", async () => {
+  const protectedRoutes = ["me", "home", "plans", "map", "presence", "geocode"];
+  for (const route of protectedRoutes) {
+    const source = await readFile(
+      new URL(`app/api/${route}/route.ts`, root),
+      "utf8",
+    );
+    assert.match(
+      source,
+      /requireApprovedMember\(request\)/,
+      `${route} must authenticate every request`,
+    );
+  }
+});
+
+test("build contains privacy headers and no client-coordinate write helper", async () => {
+  const [worker, server] = await Promise.all([
+    readFile(new URL("worker/index.ts", root), "utf8"),
+    readFile(new URL("lib/server.ts", root), "utf8"),
+  ]);
+  assert.match(worker, /content-security-policy/i);
+  assert.match(worker, /private, no-store/i);
+  assert.match(worker, /permissions-policy/i);
+  assert.doesNotMatch(server, /cleanPlace/);
 });

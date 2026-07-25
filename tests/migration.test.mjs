@@ -1,0 +1,104 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { DatabaseSync } from "node:sqlite";
+import test from "node:test";
+
+const root = new URL("../", import.meta.url);
+
+async function applyMigration(database, name) {
+  const source = await readFile(new URL(`drizzle/${name}`, root), "utf8");
+  for (const statement of source.split("--> statement-breakpoint")) {
+    if (statement.trim()) database.exec(statement);
+  }
+}
+
+test("1.0 migration preserves legacy city data and enforces invariants", async () => {
+  const database = new DatabaseSync(":memory:");
+  database.exec("PRAGMA foreign_keys=ON");
+  await applyMigration(database, "0000_clean_captain_marvel.sql");
+  database.exec(`
+    INSERT INTO members (
+      telegram_id, username, first_name, status,
+      home_city, home_country, home_country_code, home_lat, home_lng
+    ) VALUES (
+      1001, 'member', 'Member', 'approved',
+      'London', 'United Kingdom', 'GB', 51.5074, -0.1278
+    );
+    INSERT INTO members (
+      telegram_id, username, first_name, status,
+      home_city, home_country, home_country_code, home_lat, home_lng
+    ) VALUES (
+      1002, 'former', 'Former', 'rejected',
+      'Berlin', 'Germany', 'DE', 52.52, 13.405
+    );
+    INSERT INTO plans (
+      id, telegram_id, starts_on, ends_on,
+      city, country, country_code, lat, lng
+    ) VALUES (
+      '11111111-1111-4111-8111-111111111111', 1001,
+      '2026-08-01', '2026-08-05',
+      'Paris', 'France', 'FR', 48.8566, 2.3522
+    );
+    INSERT INTO plans (
+      id, telegram_id, starts_on, ends_on,
+      city, country, country_code, lat, lng
+    ) VALUES (
+      '33333333-3333-4333-8333-333333333333', 1002,
+      '2026-09-01', '2026-09-05',
+      'Vienna', 'Austria', 'AT', 48.2082, 16.3738
+    );
+  `);
+
+  await applyMigration(database, "0001_boring_betty_brant.sql");
+
+  const member = database
+    .prepare(
+      "SELECT status, home_place_id AS homePlaceId FROM members WHERE telegram_id = 1001",
+    )
+    .get();
+  assert.deepEqual({ ...member }, {
+    status: "approved",
+    homePlaceId: "legacy-home-0000000000001001",
+  });
+  assert.equal(
+    database.prepare("SELECT count(*) AS count FROM places").get().count,
+    2,
+  );
+  assert.equal(
+    database.prepare("PRAGMA foreign_key_check").all().length,
+    0,
+  );
+  assert.equal(
+    database
+      .prepare("SELECT home_place_id FROM members WHERE telegram_id = 1002")
+      .get().home_place_id,
+    null,
+  );
+  assert.equal(
+    database
+      .prepare("SELECT count(*) AS count FROM plans WHERE telegram_id = 1002")
+      .get().count,
+    0,
+  );
+
+  assert.throws(
+    () =>
+      database.exec(`
+        INSERT INTO plans (
+          id, telegram_id, place_id, starts_on, ends_on
+        ) VALUES (
+          '22222222-2222-4222-8222-222222222222', 1001,
+          'legacy-plan-11111111111141118111111111111111',
+          '2026-08-03', '2026-08-04'
+        )
+      `),
+    /overlapping plan/i,
+  );
+  assert.throws(
+    () =>
+      database.exec(`
+        UPDATE members SET status = 'self-approved' WHERE telegram_id = 1001
+      `),
+    /constraint/i,
+  );
+});

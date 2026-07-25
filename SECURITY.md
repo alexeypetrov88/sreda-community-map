@@ -2,8 +2,8 @@
 
 ## Supported versions
 
-This project is pre-1.0. Security fixes are applied to the latest `main`
-revision only.
+Security fixes are applied to the latest 1.x release and the latest `main`
+revision.
 
 ## Reporting a vulnerability
 
@@ -28,6 +28,7 @@ Include:
 Deployers are responsible for:
 
 - rotating BotFather tokens and webhook secrets after exposure;
+- rotating the private join code if its invitation link escapes the community;
 - keeping administrator IDs current;
 - restricting raw database access;
 - publishing a privacy notice and retention policy;

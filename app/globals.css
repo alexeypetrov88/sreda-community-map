@@ -607,6 +607,10 @@ button {
   text-align: center;
 }
 
+.danger-zone {
+  border-color: color-mix(in srgb, var(--coral) 45%, var(--border));
+}
+
 @media (max-width: 560px) {
   .sreda-shell {
     padding-right: 12px;
