@@ -2,9 +2,11 @@
 
 ## 1. Create credentials
 
-Create the bot through [BotFather](https://t.me/BotFather). Collect numeric
-Telegram IDs for every administrator; usernames are mutable and unsuitable for
-authorization.
+Create the Sreda Community Map bot through
+[BotFather](https://t.me/BotFather). Administrators may be configured using
+numeric Telegram IDs or usernames. Each configured username can be claimed
+once by the matching account; that account's numeric Telegram identity is then
+pinned in the database and becomes authoritative for later admin checks.
 
 Generate three different random values:
 
@@ -30,6 +32,7 @@ creates the atomic overlap trigger.
 ```text
 BOT_TOKEN
 SREDA_ADMIN_IDS
+SREDA_ADMIN_USERNAMES
 SREDA_APP_URL
 SREDA_JOIN_CODE
 TELEGRAM_WEBHOOK_SECRET
@@ -40,7 +43,9 @@ GEOCODER_CONTACT
 `GEOCODER_URL` optionally replaces the Nominatim-compatible default.
 
 Store `BOT_TOKEN`, `SREDA_JOIN_CODE`, and `TELEGRAM_WEBHOOK_SECRET` as hosting
-secrets. Treat the admin allowlist as security-sensitive configuration.
+secrets. Configure at least one of `SREDA_ADMIN_IDS` or
+`SREDA_ADMIN_USERNAMES`, and treat the admin allowlist as security-sensitive
+configuration.
 
 ## 4. Validate and deploy
 

@@ -21,6 +21,7 @@ export type ApprovedMember = typeof members.$inferSelect;
 type RuntimeEnv = {
   BOT_TOKEN?: string;
   SREDA_ADMIN_IDS?: string;
+  SREDA_ADMIN_USERNAMES?: string;
   SREDA_APP_URL?: string;
   SREDA_JOIN_CODE?: string;
   TELEGRAM_WEBHOOK_SECRET?: string;

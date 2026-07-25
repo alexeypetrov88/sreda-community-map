@@ -40,6 +40,12 @@ function cleanTelegramText(value: unknown, maximum: number) {
   return normalized;
 }
 
+export function normalizeTelegramUsername(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().replace(/^@/, "").toLocaleLowerCase();
+  return /^[a-z0-9_]{5,32}$/.test(normalized) ? normalized : undefined;
+}
+
 export async function validateTelegramInitData(
   initData: string,
   botToken: string,

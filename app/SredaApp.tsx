@@ -124,8 +124,7 @@ function CityPicker({
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
 
-  async function search(event: FormEvent) {
-    event.preventDefault();
+  async function search() {
     if (query.trim().length < 2) return;
     setSearching(true);
     setError("");
@@ -144,18 +143,28 @@ function CityPicker({
 
   return (
     <div>
-      <form className="city-search-row" onSubmit={search}>
+      <div className="city-search-row">
         <input
           className="field"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter") return;
+            event.preventDefault();
+            void search();
+          }}
           placeholder="City, country"
           aria-label="City and country"
         />
-        <button className="button secondary" type="submit" disabled={searching}>
+        <button
+          className="button secondary"
+          type="button"
+          disabled={searching}
+          onClick={() => void search()}
+        >
           {searching ? "Searching…" : "Find"}
         </button>
-      </form>
+      </div>
       {error && <div className="error">{error}</div>}
       {results.length > 0 && (
         <div className="city-results">
@@ -483,7 +492,7 @@ export function SredaApp() {
     return (
       <main className="outside">
         <div className="outside-card card">
-          <div className="brand-mark"><span>S</span></div>
+          <div className="brand-mark" aria-hidden="true" />
           <h1>Sreda</h1>
           <p>Opening the private community map…</p>
         </div>
@@ -495,7 +504,7 @@ export function SredaApp() {
     return (
       <main className="outside">
         <div className="outside-card card">
-          <div className="brand-mark"><span>S</span></div>
+          <div className="brand-mark" aria-hidden="true" />
           <h1>Sreda</h1>
           <p>
             This map is private. Open the invitation link shared inside Sreda,
@@ -510,7 +519,7 @@ export function SredaApp() {
     return (
       <main className="outside">
         <div className="outside-card card">
-          <div className="brand-mark"><span>S</span></div>
+          <div className="brand-mark" aria-hidden="true" />
           <h1>Not open yet</h1>
           <p>{fatalError}</p>
         </div>
@@ -522,7 +531,7 @@ export function SredaApp() {
     <main className="sreda-shell">
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark"><span>S</span></div>
+          <div className="brand-mark" aria-hidden="true" />
           Sreda
         </div>
         <div className="top-date">{friendlyDate(today())}</div>
@@ -532,7 +541,7 @@ export function SredaApp() {
         <>
           <section className="hero">
             <div>
-              <p className="eyebrow">Sreda community map</p>
+              <p className="eyebrow">Sreda Community Map</p>
               <h1>Find your people, wherever you are.</h1>
               <p>
                 Travellers are highlighted so a short overlap never slips past.

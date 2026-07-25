@@ -16,7 +16,10 @@ test("builds the private Sreda entry point", async () => {
     new URL(`dist/client/assets/${appAsset}`, root),
     "utf8",
   );
-  assert.match(serverBundle, /Sreda — find your people nearby/i);
+  assert.match(
+    serverBundle,
+    /Sreda Community Map — find your people nearby/i,
+  );
   assert.match(clientBundle, /private community map/i);
   assert.match(clientBundle, /Who is here today/i);
   assert.doesNotMatch(clientBundle, /unpkg\.com\/leaflet/i);
@@ -55,12 +58,60 @@ test("every community-data route uses the central membership guard", async () =>
 });
 
 test("build contains privacy headers and no client-coordinate write helper", async () => {
-  const [worker, server] = await Promise.all([
+  const [worker, server, layout] = await Promise.all([
     readFile(new URL("worker/index.ts", root), "utf8"),
     readFile(new URL("lib/server.ts", root), "utf8"),
+    readFile(new URL("app/layout.tsx", root), "utf8"),
   ]);
   assert.match(worker, /content-security-policy/i);
+  assert.match(worker, /script-src 'self' 'unsafe-inline' https:\/\/telegram\.org/i);
+  assert.match(worker, /script-src-attr 'none'/i);
   assert.match(worker, /private, no-store/i);
   assert.match(worker, /permissions-policy/i);
+  assert.match(layout, /https:\/\/telegram\.org\/js\/telegram-web-app\.js/i);
+  assert.match(layout, /strategy="beforeInteractive"/i);
   assert.doesNotMatch(server, /cleanPlace/);
+});
+
+test("city search cannot submit its parent location form", async () => {
+  const source = await readFile(new URL("app/SredaApp.tsx", root), "utf8");
+  assert.doesNotMatch(source, /<form className="city-search-row"/);
+  assert.match(source, /className="city-search-row"/);
+  assert.match(source, /onClick=\{\(\) => void search\(\)\}/);
+  assert.match(source, /event\.key !== "Enter"/);
+});
+
+test("mobile date fields are constrained to their grid column", async () => {
+  const styles = await readFile(new URL("app/globals.css", root), "utf8");
+  assert.match(styles, /\.two-columns input\[type="date"\]/);
+  assert.match(styles, /max-inline-size:\s*100%/);
+  assert.match(styles, /-webkit-appearance:\s*none/);
+  assert.match(
+    styles,
+    /@media \(max-width: 560px\)[\s\S]*\.quick-actions,\s*\.two-columns\s*\{[\s\S]*grid-template-columns:\s*1fr/,
+  );
+  assert.match(styles, /\.date-stepper > \*/);
+  assert.match(
+    styles,
+    /\.date-input\s*\{[\s\S]*max-inline-size:\s*100%[\s\S]*-webkit-appearance:\s*none/,
+  );
+});
+
+test("uses the approved Sreda icon throughout the app", async () => {
+  const [source, styles, layout] = await Promise.all([
+    readFile(new URL("app/SredaApp.tsx", root), "utf8"),
+    readFile(new URL("app/globals.css", root), "utf8"),
+    readFile(new URL("app/layout.tsx", root), "utf8"),
+  ]);
+  const icon = new URL(
+    "public/sreda-community-map-icon-v3-dark-green.png",
+    root,
+  );
+  await access(icon);
+  assert.doesNotMatch(source, /className="brand-mark"><span>S<\/span>/);
+  assert.match(
+    styles,
+    /url\("\/sreda-community-map-icon-v3-dark-green\.png"\)/,
+  );
+  assert.match(layout, /sreda-community-map-icon-v3-dark-green\.png/);
 });
