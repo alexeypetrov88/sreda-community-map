@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Let members edit the display name shown on maps and presence searches.
+
 ## 1.0.0
 
 - Require a private Telegram deep-link join code before admin approval.

@@ -16,8 +16,9 @@ city returned by the configured geocoder. The server stores it as a canonical
 place and gives the client an opaque place ID. Location writes accept only that
 ID, so browser-supplied latitude and longitude cannot be stored.
 
-The map endpoint returns only name, city centroid, country, and whether the
-person is travelling. It does not return usernames or full trip ranges.
+The map endpoint returns only the member’s chosen display name, city centroid,
+country, whether the person is travelling, and the active trip’s date range.
+It does not return Telegram usernames.
 
 No phone number, exact address, live GPS trail, private chat history, or
 free-form travel note is stored. Members can remove home or permanently delete
@@ -30,7 +31,7 @@ their membership, plans, requests, and identifying audit records.
 | Anonymous visitor | Load the public shell; no community data |
 | Unknown Telegram user | Cannot request access without the private invitation payload |
 | Pending/rejected/revoked user | Receive status messages; no community data |
-| Approved member | Read city presence; manage only their own home and plans |
+| Approved member | Read city presence; manage only their own profile, home, and plans |
 | Configured admin | Decide requests and revoke/restore members |
 | Project/database operator | Access runtime secrets, logs, and raw data |
 | Telegram | Process bot messages and provide Mini App identity |
@@ -72,9 +73,9 @@ it from the pending list.
 
 ### Unauthorized mutation and race conditions
 
-Home, plans, deletion, and account deletion use the signed member identity.
-Plan deletion matches both member and plan IDs. A SQLite trigger rejects
-overlap at insertion time even when two requests race.
+Display-name changes, home, plans, deletion, and account deletion use the
+signed member identity. Plan deletion matches both member and plan IDs. A
+SQLite trigger rejects overlap at insertion time even when two requests race.
 
 ### Excessive reads and scraping
 

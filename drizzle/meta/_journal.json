@@ -29,6 +29,13 @@
       "when": 1785015624013,
       "tag": "0003_freezing_mac_gargan",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1785061831015,
+      "tag": "0004_purple_brood",
+      "breakpoints": true
     }
   ]
 }

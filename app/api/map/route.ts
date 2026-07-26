@@ -3,6 +3,7 @@ import { members, places, plans } from "../../../db/schema";
 import {
   enforceMemberRateLimit,
   isIsoDate,
+  memberDisplayName,
   privateJson,
   requireApprovedMember,
 } from "../../../lib/server";
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
       telegramId: members.telegramId,
       firstName: members.firstName,
       lastName: members.lastName,
+      displayName: members.displayName,
       home: places,
     })
     .from(members)
@@ -65,7 +67,7 @@ export async function GET(request: Request) {
     if (!place) return [];
     return [
       {
-        name: [member.firstName, member.lastName].filter(Boolean).join(" "),
+        name: memberDisplayName(member),
         city: place.city,
         country: place.country,
         countryCode: place.countryCode,

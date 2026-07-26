@@ -12,6 +12,7 @@ import {
   configuredAppUrl,
   consumeRateLimit,
   HttpError,
+  memberDisplayName,
   parseJsonObject,
   privateJson,
   routeError,
@@ -92,6 +93,14 @@ function displayLabel(user: TelegramIdentity) {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+function initialDisplayName(user: TelegramIdentity) {
+  return [user.first_name, user.last_name]
+    .filter(Boolean)
+    .join(" ")
+    .slice(0, 100)
+    .trim();
 }
 
 async function isAdmin(user: TelegramIdentity) {
@@ -248,6 +257,7 @@ async function sendAdminHome(admin: TelegramIdentity, appUrl: string) {
       username: admin.username,
       firstName: admin.first_name,
       lastName: admin.last_name,
+      displayName: initialDisplayName(admin),
       status: "approved",
       approvedAt: new Date().toISOString(),
       approvedBy: admin.id,
@@ -380,9 +390,9 @@ async function handleStart(
     getD1()
       .prepare(
         `INSERT INTO members (
-           telegram_id, username, first_name, last_name, status,
+           telegram_id, username, first_name, last_name, display_name, status,
            requested_at, status_changed_at
-         ) VALUES (?1, ?2, ?3, ?4, 'pending', ?5, ?5)
+         ) VALUES (?1, ?2, ?3, ?4, ?5, 'pending', ?6, ?6)
          ON CONFLICT(telegram_id) DO NOTHING`,
       )
       .bind(
@@ -390,6 +400,7 @@ async function handleStart(
         user.username ?? null,
         user.first_name,
         user.last_name ?? null,
+        initialDisplayName(user),
         now.toISOString(),
       ),
     getD1()
@@ -552,8 +563,7 @@ async function sendPendingRequests(adminId: number) {
       .limit(1);
     if (!member) continue;
     const label = [
-      escapeTelegramHtml(member.firstName),
-      member.lastName ? escapeTelegramHtml(member.lastName) : "",
+      escapeTelegramHtml(memberDisplayName(member)),
       member.username ? `(@${escapeTelegramHtml(member.username)})` : "",
     ]
       .filter(Boolean)
@@ -586,7 +596,7 @@ async function sendMemberPage(
     .select()
     .from(members)
     .where(inArray(members.status, statuses))
-    .orderBy(asc(members.firstName), asc(members.telegramId))
+    .orderBy(asc(members.displayName), asc(members.telegramId))
     .limit(10)
     .offset(offset);
   const visibleRows: typeof rows = [];
@@ -605,8 +615,7 @@ async function sendMemberPage(
   await settleMessages(
     visibleRows.map((member) => {
       const label = [
-        escapeTelegramHtml(member.firstName),
-        member.lastName ? escapeTelegramHtml(member.lastName) : "",
+        escapeTelegramHtml(memberDisplayName(member)),
         member.username ? `(@${escapeTelegramHtml(member.username)})` : "",
       ]
         .filter(Boolean)

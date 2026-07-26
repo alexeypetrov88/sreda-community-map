@@ -27,6 +27,8 @@ free-form location field.
   username can bootstrap one admin account and is then permanently pinned to
   that account's immutable numeric Telegram identity.
 - Approved members open the Mini App from the bot.
+- Members can replace their Telegram-derived display name with the name their
+  community will recognize.
 - A member can set or change a country-and-city-level home location.
 - **I’m travelling now** creates a trip beginning today.
 - **Plan a future trip** records a city and inclusive start/end dates.
@@ -81,6 +83,7 @@ See [Architecture](docs/architecture.md) and
 |---|---|
 | Telegram numeric ID | Yes |
 | Telegram name and optional username | Yes |
+| Member-editable display name | Yes |
 | Membership and approval status | Yes |
 | Canonical home city and country | Optional |
 | Canonical trip city, country and dates | Optional |

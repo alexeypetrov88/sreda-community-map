@@ -46,6 +46,16 @@ export function normalizeTelegramUsername(value: unknown) {
   return /^[a-z0-9_]{5,32}$/.test(normalized) ? normalized : undefined;
 }
 
+export function normalizeDisplayName(value: unknown) {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.normalize("NFC");
+  if (/[\u0000-\u001f\u007f-\u009f]/u.test(normalized)) return undefined;
+  const collapsed = normalized.trim().replace(/\s+/gu, " ");
+  return collapsed.length >= 1 && collapsed.length <= 100
+    ? collapsed
+    : undefined;
+}
+
 export async function validateTelegramInitData(
   initData: string,
   botToken: string,

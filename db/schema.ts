@@ -61,6 +61,7 @@ export const members = sqliteTable(
     username: text("username"),
     firstName: text("first_name").notNull(),
     lastName: text("last_name"),
+    displayName: text("display_name"),
     status: text("status", { enum: memberStatuses })
       .notNull()
       .default("pending"),
@@ -87,6 +88,10 @@ export const members = sqliteTable(
     check(
       "members_last_name_check",
       sql`${table.lastName} IS NULL OR length(${table.lastName}) <= 100`,
+    ),
+    check(
+      "members_display_name_check",
+      sql`${table.displayName} IS NULL OR length(${table.displayName}) BETWEEN 1 AND 100`,
     ),
     check(
       "members_username_check",

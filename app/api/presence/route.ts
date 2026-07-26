@@ -3,6 +3,7 @@ import { members, plans } from "../../../db/schema";
 import {
   enforceMemberRateLimit,
   isIsoDate,
+  memberDisplayName,
   privateJson,
   publicPlace,
   requireApprovedMember,
@@ -94,6 +95,7 @@ export async function GET(request: Request) {
       telegramId: members.telegramId,
       firstName: members.firstName,
       lastName: members.lastName,
+      displayName: members.displayName,
       homePlaceId: members.homePlaceId,
     })
     .from(members)
@@ -128,7 +130,7 @@ export async function GET(request: Request) {
     const periods = contiguousPeriods(matches);
     return [
       {
-        name: [member.firstName, member.lastName].filter(Boolean).join(" "),
+        name: memberDisplayName(member),
         periods,
         travelling: periods.some((period) => period.mode === "travelling"),
       },
