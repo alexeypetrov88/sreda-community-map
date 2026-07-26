@@ -7,6 +7,8 @@ import {
 } from "../../../db/schema";
 import {
   enforceMemberRateLimit,
+  memberDisplayName,
+  normalizeDisplayName,
   parseJsonObject,
   privateJson,
   publicPlace,
@@ -23,6 +25,7 @@ export async function GET(request: Request) {
     .select({
       firstName: members.firstName,
       lastName: members.lastName,
+      displayName: members.displayName,
       username: members.username,
       home: places,
     })
@@ -51,6 +54,7 @@ export async function GET(request: Request) {
     member: {
       firstName: profile.firstName,
       lastName: profile.lastName,
+      displayName: memberDisplayName(profile),
       username: profile.username,
       home: profile.home ? publicPlace(profile.home) : null,
     },
@@ -61,6 +65,40 @@ export async function GET(request: Request) {
       ...publicPlace(plan.place),
     })),
   });
+}
+
+export async function PATCH(request: Request) {
+  const auth = await requireApprovedMember(request);
+  if ("error" in auth) return auth.error;
+  const limited = await enforceMemberRateLimit(
+    auth.member.telegramId,
+    "profile-write",
+    10,
+    3_600,
+  );
+  if (limited) return limited;
+
+  try {
+    const payload = await parseJsonObject(request);
+    const displayName = normalizeDisplayName(payload.displayName);
+    if (!displayName) {
+      return privateJson(
+        { error: "Display name must be between 1 and 100 characters" },
+        { status: 400 },
+      );
+    }
+    const [updated] = await auth.db
+      .update(members)
+      .set({ displayName })
+      .where(eq(members.telegramId, auth.member.telegramId))
+      .returning({ displayName: members.displayName });
+    if (!updated?.displayName) {
+      return privateJson({ error: "Profile could not be updated" }, { status: 409 });
+    }
+    return privateJson({ displayName: updated.displayName });
+  } catch (error) {
+    return routeError(error);
+  }
 }
 
 export async function DELETE(request: Request) {

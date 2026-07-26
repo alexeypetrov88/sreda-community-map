@@ -101,6 +101,26 @@ test("city search cannot submit its parent location form", async () => {
   assert.match(source, /event\.key !== "Enter"/);
 });
 
+test("members can edit the display name used by map and presence views", async () => {
+  const [source, meRoute, mapRoute, presenceRoute, schema, migration] =
+    await Promise.all([
+      readFile(new URL("app/SredaApp.tsx", root), "utf8"),
+      readFile(new URL("app/api/me/route.ts", root), "utf8"),
+      readFile(new URL("app/api/map/route.ts", root), "utf8"),
+      readFile(new URL("app/api/presence/route.ts", root), "utf8"),
+      readFile(new URL("db/schema.ts", root), "utf8"),
+      readFile(new URL("drizzle/0004_purple_brood.sql", root), "utf8"),
+    ]);
+  assert.match(schema, /displayName: text\("display_name"\)/);
+  assert.match(migration, /"first_name" \|\|/);
+  assert.match(source, /className="profile-form"/);
+  assert.match(source, /method: "PATCH"/);
+  assert.match(meRoute, /normalizeDisplayName\(payload\.displayName\)/);
+  assert.match(meRoute, /\.set\(\{ displayName \}\)/);
+  assert.match(mapRoute, /name: memberDisplayName\(member\)/);
+  assert.match(presenceRoute, /name: memberDisplayName\(member\)/);
+});
+
 test("mobile date fields are constrained to their grid column", async () => {
   const styles = await readFile(new URL("app/globals.css", root), "utf8");
   assert.match(styles, /\.two-columns input\[type="date"\]/);
@@ -108,7 +128,7 @@ test("mobile date fields are constrained to their grid column", async () => {
   assert.match(styles, /-webkit-appearance:\s*none/);
   assert.match(
     styles,
-    /@media \(max-width: 560px\)[\s\S]*\.quick-actions,\s*\.two-columns\s*\{[\s\S]*grid-template-columns:\s*1fr/,
+    /@media \(max-width: 560px\)[\s\S]*\.quick-actions,\s*\.two-columns,\s*\.profile-form\s*\{[\s\S]*grid-template-columns:\s*1fr/,
   );
   assert.match(styles, /\.date-stepper > \*/);
   assert.match(

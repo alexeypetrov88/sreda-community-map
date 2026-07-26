@@ -48,6 +48,7 @@ type MemberData = {
   member: {
     firstName: string;
     lastName?: string | null;
+    displayName: string;
     username?: string | null;
     home: Place | null;
   };
@@ -87,8 +88,11 @@ function friendlyDate(date: string) {
   }).format(new Date(`${date}T12:00:00Z`));
 }
 
-function initials(first: string, last?: string | null) {
-  return `${first[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase();
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] ?? "";
+  const last = parts.length > 1 ? parts.at(-1)?.[0] ?? "" : "";
+  return `${first}${last}`.toUpperCase();
 }
 
 function escapeHtml(value: string) {
@@ -295,6 +299,9 @@ export function SredaApp() {
   const [endsOn, setEndsOn] = useState(addDays(today(), 7));
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [displayNameDraft, setDisplayNameDraft] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
   const [whoPlace, setWhoPlace] = useState<Place | null>(null);
@@ -338,6 +345,7 @@ export function SredaApp() {
     try {
       const data = await api<MemberData>("/api/me");
       setMemberData(data);
+      setDisplayNameDraft(data.member.displayName);
       setWhoPlace((currentPlace) => {
         if (currentPlace) return currentPlace;
         const current = data.upcomingPlans.find(
@@ -370,9 +378,7 @@ export function SredaApp() {
     });
   }, [api, initData, mapDate, tab]);
 
-  const displayName = memberData
-    ? [memberData.member.firstName, memberData.member.lastName].filter(Boolean).join(" ")
-    : "";
+  const displayName = memberData?.member.displayName ?? "";
 
   const currentLocation = useMemo(() => {
     const active = memberData?.upcomingPlans.find(
@@ -430,6 +436,33 @@ export function SredaApp() {
       setFormError(
         reason instanceof Error ? reason.message : "Could not remove home city",
       );
+    }
+  }
+
+  async function saveDisplayName(event: FormEvent) {
+    event.preventDefault();
+    setProfileSaving(true);
+    setProfileError("");
+    try {
+      const data = await api<{ displayName: string }>("/api/me", {
+        method: "PATCH",
+        body: JSON.stringify({ displayName: displayNameDraft }),
+      });
+      setDisplayNameDraft(data.displayName);
+      setMemberData((current) =>
+        current
+          ? {
+              ...current,
+              member: { ...current.member, displayName: data.displayName },
+            }
+          : current,
+      );
+    } catch (reason) {
+      setProfileError(
+        reason instanceof Error ? reason.message : "Could not save your name",
+      );
+    } finally {
+      setProfileSaving(false);
     }
   }
 
@@ -556,7 +589,7 @@ export function SredaApp() {
             </div>
             {memberData && (
               <div className="avatar" title={displayName}>
-                {initials(memberData.member.firstName, memberData.member.lastName)}
+                {initials(displayName)}
               </div>
             )}
           </section>
@@ -624,12 +657,47 @@ export function SredaApp() {
         <>
           <div className="section-heading">
             <div>
-              <p className="eyebrow">Your location</p>
-              <h2>Home & trips</h2>
+              <p className="eyebrow">Your profile</p>
+              <h2>Name, home & trips</h2>
               <p>Only approved Sreda members can see these.</p>
             </div>
           </div>
           <div className="stack">
+            <section className="card panel">
+              <div className="panel-title">
+                <h3>Display name</h3>
+              </div>
+              <p className="muted profile-help">
+                This is how other Sreda members will see you on the map.
+              </p>
+              <form className="profile-form" onSubmit={saveDisplayName}>
+                <input
+                  className="field"
+                  type="text"
+                  value={displayNameDraft}
+                  maxLength={100}
+                  autoComplete="name"
+                  aria-label="Display name"
+                  onChange={(event) => {
+                    setDisplayNameDraft(event.target.value);
+                    setProfileError("");
+                  }}
+                />
+                <button
+                  className="button secondary"
+                  type="submit"
+                  disabled={
+                    profileSaving ||
+                    !displayNameDraft.trim() ||
+                    displayNameDraft.trim() === displayName
+                  }
+                >
+                  {profileSaving ? "Saving…" : "Save"}
+                </button>
+              </form>
+              {profileError && <div className="error profile-error">{profileError}</div>}
+            </section>
+
             <section className="card panel">
               <div className="panel-title">
                 <h3>Home city</h3>

@@ -387,6 +387,21 @@ button {
   letter-spacing: -0.04em;
 }
 
+.profile-help {
+  margin: 7px 0 12px;
+  font-size: 13px;
+}
+
+.profile-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.profile-error {
+  margin-top: 10px;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -671,7 +686,8 @@ button {
   }
 
   .quick-actions,
-  .two-columns {
+  .two-columns,
+  .profile-form {
     grid-template-columns: 1fr;
   }
 

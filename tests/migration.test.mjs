@@ -12,16 +12,16 @@ async function applyMigration(database, name) {
   }
 }
 
-test("1.0 migration preserves legacy city data and enforces invariants", async () => {
+test("migrations preserve legacy data and add editable display names", async () => {
   const database = new DatabaseSync(":memory:");
   database.exec("PRAGMA foreign_keys=ON");
   await applyMigration(database, "0000_clean_captain_marvel.sql");
   database.exec(`
     INSERT INTO members (
-      telegram_id, username, first_name, status,
+      telegram_id, username, first_name, last_name, status,
       home_city, home_country, home_country_code, home_lat, home_lng
     ) VALUES (
-      1001, 'member', 'Member', 'approved',
+      1001, 'member', 'Member', 'Example', 'approved',
       'London', 'United Kingdom', 'GB', 51.5074, -0.1278
     );
     INSERT INTO members (
@@ -57,15 +57,19 @@ test("1.0 migration preserves legacy city data and enforces invariants", async (
   `);
   await applyMigration(database, "0002_furry_rockslide.sql");
   await applyMigration(database, "0003_freezing_mac_gargan.sql");
+  await applyMigration(database, "0004_purple_brood.sql");
 
   const member = database
     .prepare(
-      "SELECT status, home_place_id AS homePlaceId FROM members WHERE telegram_id = 1001",
+      `SELECT status, home_place_id AS homePlaceId,
+              display_name AS displayName
+       FROM members WHERE telegram_id = 1001`,
     )
     .get();
   assert.deepEqual({ ...member }, {
     status: "approved",
     homePlaceId: "legacy-home-0000000000001001",
+    displayName: "Member Example",
   });
   assert.equal(
     database.prepare("SELECT count(*) AS count FROM places").get().count,

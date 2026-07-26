@@ -43,6 +43,7 @@ The client-side `initDataUnsafe` object is not used for authorization.
 | Route | Method | Responsibility |
 |---|---|---|
 | `/api/me` | GET | Profile, home city and upcoming trips |
+| `/api/me` | PATCH | Update the authenticated member’s display name |
 | `/api/me` | DELETE | Permanently delete the member and their trips |
 | `/api/home` | POST | Set home using a canonical server place ID |
 | `/api/home` | DELETE | Remove the authenticated member’s home |
@@ -78,6 +79,7 @@ bound reads, writes, join attempts, and geocoding.
 `members`
 
 - bounded Telegram identity fields
+- a bounded member-editable display name, initially copied from Telegram
 - `pending`, `approved`, `rejected`, `revoked`, or `blocked` status
 - approval/status timestamps and approving admin ID
 - optional foreign key to a canonical home place
@@ -100,6 +102,6 @@ for 90 days. It contains neither the raw search text nor a Telegram ID.
 - City-level precision only; browser-supplied coordinates are never accepted
 - No live tracking, exact addresses, or device geolocation
 - No overlapping trips
-- No user-authored notes or LLM
+- No user-authored travel notes or LLM
 - No public unauthenticated community-data API
 - No client-side source of truth for identity or membership

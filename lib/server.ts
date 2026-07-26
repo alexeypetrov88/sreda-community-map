@@ -12,6 +12,7 @@ export {
   HttpError,
   isIsoDate,
   isValidPlaceId,
+  normalizeDisplayName,
   parseJsonObject,
   validateTelegramInitData,
 } from "./security";
@@ -225,4 +226,16 @@ export function publicPlace(place: typeof places.$inferSelect) {
     country: place.country,
     countryCode: place.countryCode,
   };
+}
+
+export function memberDisplayName(
+  member: Pick<
+    typeof members.$inferSelect,
+    "displayName" | "firstName" | "lastName"
+  >,
+) {
+  return (
+    member.displayName ??
+    [member.firstName, member.lastName].filter(Boolean).join(" ")
+  );
 }
