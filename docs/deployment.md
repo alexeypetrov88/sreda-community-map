@@ -23,6 +23,10 @@ The Worker expects a D1 binding named `DB`. Apply every migration in `drizzle/`
 in order. For Sites, `.openai/hosting.json` declares the logical binding and
 packaged migrations are applied during deployment.
 
+Keep the hosting provider's project ID in the deployment environment or an
+ignored deployment checkout. It identifies one installation and does not
+belong in the reusable open-source configuration.
+
 Migration `0001` preserves pre-1.0 home/trip data by converting each existing
 location to a server-owned legacy place, adds membership lifecycle tables, and
 creates the atomic overlap trigger.

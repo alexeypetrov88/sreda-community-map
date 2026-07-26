@@ -133,8 +133,11 @@ test("join code comparison fails closed", () => {
 });
 
 test("Telegram admin usernames are normalized and strictly bounded", () => {
-  assert.equal(normalizeTelegramUsername("@Alexey_Petrov"), "alexey_petrov");
-  assert.equal(normalizeTelegramUsername(" zhidkovakate "), "zhidkovakate");
+  assert.equal(normalizeTelegramUsername("@Example_Admin"), "example_admin");
+  assert.equal(
+    normalizeTelegramUsername(" Community_Moderator "),
+    "community_moderator",
+  );
   assert.equal(normalizeTelegramUsername("four"), undefined);
   assert.equal(normalizeTelegramUsername("invalid-name"), undefined);
   assert.equal(normalizeTelegramUsername(undefined), undefined);
