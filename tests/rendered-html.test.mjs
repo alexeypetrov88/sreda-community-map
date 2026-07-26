@@ -27,12 +27,19 @@ test("builds the private Sreda entry point", async () => {
 });
 
 test("removes the disposable starter and declares durable storage", async () => {
-  const [hosting, packageJson, schema] = await Promise.all([
+  const [hosting, packageJson, schema, envExample] = await Promise.all([
     readFile(new URL(".openai/hosting.json", root), "utf8"),
     readFile(new URL("package.json", root), "utf8"),
     readFile(new URL("db/schema.ts", root), "utf8"),
+    readFile(new URL(".env.example", root), "utf8"),
   ]);
   assert.match(hosting, /"d1": "DB"/);
+  assert.doesNotMatch(hosting, /"project_id"/);
+  assert.doesNotMatch(envExample, /\b\d{8,12}:AA[A-Za-z0-9_-]{30,}\b/);
+  assert.match(
+    envExample,
+    /^SREDA_ADMIN_USERNAMES=community_owner,community_moderator$/m,
+  );
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   assert.match(schema, /members/);
   assert.match(schema, /plans/);
